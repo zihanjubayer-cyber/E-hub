@@ -1,0 +1,774 @@
+```react
+import React, { useState, useEffect } from 'react';
+import { initializeApp } from 'firebase/app';
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from 'firebase/auth';
+import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, getDoc, setDoc } from 'firebase/firestore';
+
+// তোমার ফায়ারবেস কনফিগারেশন
+const firebaseConfig = {
+  apiKey: "AIzaSyBxzTKy4vi9VcGFM7kg4pePDukB-aWhoAA",
+  authDomain: "premium-hsc-notes.firebaseapp.com",
+  projectId: "premium-hsc-notes",
+  storageBucket: "premium-hsc-notes.firebasestorage.app",
+  messagingSenderId: "938896449795",
+  appId: "1:938896449795:web:73f7516e756df73aea0936"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+export default function App() {
+  const [activeTab, setActiveTab] = useState('store'); 
+  const [products, setProducts] = useState([]);
+  const [cart, setCart] = useState([]);
+  const [library, setLibrary] = useState([]); 
+  const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState(null);
+
+  // Dynamic Settings & Coupons
+  const [storeSettings, setStoreSettings] = useState({ paymentNumber: '01XXXXXXXXX' });
+  const [coupons, setCoupons] = useState([]);
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
+  const [couponInput, setCouponInput] = useState('');
+  
+  // Admin State
+  const [user, setUser] = useState(null);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [orders, setOrders] = useState([]);
+  
+  // New Product Form
+  const [newProduct, setNewProduct] = useState({ 
+    title: '', price: '', category: 'Physics', writer: '', description: '', demoLink: '', mainLink: '', isFree: false 
+  });
+  const [newCoupon, setNewCoupon] = useState({ code: '', discount: '' });
+  const [newPaymentNumber, setNewPaymentNumber] = useState('');
+
+  // Phase 7 States: Search and Filter
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('All');
+
+  // Toast Notification
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const prodSnap = await getDocs(collection(db, "products"));
+      setProducts(prodSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      
+      const settingsDoc = await getDoc(doc(db, "settings", "store"));
+      if (settingsDoc.exists()) setStoreSettings(settingsDoc.data());
+
+      const couponSnap = await getDocs(collection(db, "coupons"));
+      setCoupons(couponSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchData();
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      if (currentUser) fetchOrders();
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const fetchOrders = async () => {
+    const querySnapshot = await getDocs(collection(db, "orders"));
+    setOrders(querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+  };
+
+  // Admin Actions
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      showToast('Successfully logged in as Admin!');
+    } catch (error) {
+      showToast('Login failed!', 'error');
+    }
+  };
+
+  const handleLogout = () => {
+    signOut(auth);
+    showToast('Logged out');
+  };
+
+  const handleAddProduct = async (e) => {
+    e.preventDefault();
+    try {
+      await addDoc(collection(db, "products"), {
+        ...newProduct,
+        price: newProduct.isFree ? 0 : Number(newProduct.price)
+      });
+      showToast("Product added successfully!");
+      setNewProduct({ title: '', price: '', category: 'Physics', writer: '', description: '', demoLink: '', mainLink: '', isFree: false });
+      fetchData();
+    } catch (error) {
+      showToast("Error adding product", 'error');
+    }
+  };
+
+  const handleDeleteProduct = async (id) => {
+    if(window.confirm("Are you sure you want to delete this note?")) {
+      await deleteDoc(doc(db, "products", id));
+      showToast("Product deleted!");
+      fetchData();
+    }
+  };
+
+  const handleSaveSettings = async (e) => {
+    e.preventDefault();
+    await setDoc(doc(db, "settings", "store"), { paymentNumber: newPaymentNumber });
+    setStoreSettings({ paymentNumber: newPaymentNumber });
+    showToast("Payment number updated!");
+  };
+
+  const handleAddCoupon = async (e) => {
+    e.preventDefault();
+    await addDoc(collection(db, "coupons"), {
+      code: newCoupon.code.toUpperCase(),
+      discount: Number(newCoupon.discount)
+    });
+    showToast("Coupon added!");
+    setNewCoupon({ code: '', discount: '' });
+    fetchData();
+  };
+
+  // Student Actions
+  const applyCoupon = () => {
+    const validCoupon = coupons.find(c => c.code === couponInput.toUpperCase());
+    if (validCoupon) {
+      setAppliedCoupon(validCoupon);
+      showToast(`Coupon applied! ${validCoupon.discount}% off.`);
+    } else {
+      showToast("Invalid coupon code!", 'error');
+      setAppliedCoupon(null);
+    }
+  };
+
+  const handleRemoveFromCart = (id) => {
+    setCart(cart.filter(item => item.id !== id));
+    showToast('Item removed from cart!');
+  };
+
+  const cartTotal = cart.reduce((sum, item) => sum + item.price, 0);
+  const finalTotal = appliedCoupon ? cartTotal - (cartTotal * (appliedCoupon.discount / 100)) : cartTotal;
+
+  const handleCheckout = async (e) => {
+    e.preventDefault();
+    const phone = e.target.phone.value;
+    const trxId = e.target.trxId.value;
+    
+    try {
+      await addDoc(collection(db, "orders"), {
+        phone,
+        trxId,
+        items: cart,
+        totalPaid: finalTotal,
+        status: 'Pending',
+        timestamp: new Date().toISOString()
+      });
+      showToast('Order submitted! Wait for admin approval.');
+      setCart([]);
+      setAppliedCoupon(null);
+      setActiveTab('library');
+    } catch (error) {
+      showToast('Error submitting order', 'error');
+    }
+  };
+
+  const handleGetFree = (product) => {
+    if(!library.find(item => item.id === product.id)) {
+      setLibrary([...library, product]);
+      showToast('Free note added to your library!');
+    }
+  };
+
+  const handleApproveOrder = async (orderId, orderItems) => {
+    try {
+      await updateDoc(doc(db, "orders", orderId), { status: 'Approved' });
+      showToast('Order Approved!');
+      fetchOrders();
+      // Demo logic for instant preview without refresh
+      const newItems = orderItems.filter(item => !library.find(l => l.id === item.id));
+      setLibrary([...library, ...newItems]);
+    } catch (error) {
+      showToast('Error approving order', 'error');
+    }
+  };
+
+  // Phase 7: Filtering Logic
+  const filteredProducts = products.filter(p => {
+    const matchesSearch = p.title.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = selectedCategory === 'All' || p.category === selectedCategory;
+    return matchesSearch && matchesCategory;
+  });
+
+  const categories = ['All', 'Physics', 'Chemistry', 'Higher Math', 'Admission'];
+
+  return (
+    <div className="flex flex-col min-h-screen bg-slate-50 text-slate-800 font-sans relative">
+      
+      {/* Custom Toast Notification */}
+      {toast && (
+        <div className={`fixed bottom-8 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-full shadow-2xl z-50 text-white font-bold tracking-wide transition-all duration-300 animate-bounce flex items-center gap-2 ${toast.type === 'error' ? 'bg-red-500' : 'bg-emerald-600'}`}>
+          {toast.type === 'error' ? (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          ) : (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>
+          )}
+          {toast.message}
+        </div>
+      )}
+
+      {/* Top Navigation */}
+      <nav className="bg-white/80 backdrop-blur-md shadow-sm p-4 flex justify-between items-center sticky top-0 z-40 border-b border-slate-100 transition-all">
+        <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+          <div className="bg-emerald-600 text-white p-1.5 rounded-lg">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+          </div>
+          <span><span className="text-emerald-600">Solution</span> Hub</span>
+        </h1>
+        <div className="flex gap-1 md:gap-3 items-center">
+          <button onClick={() => setActiveTab('store')} className={`px-3 md:px-4 py-2 rounded-xl font-bold transition-all flex items-center gap-2 ${activeTab === 'store' ? 'text-emerald-700 bg-emerald-50 shadow-sm' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`}>
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            <span className="hidden sm:inline">Store</span>
+          </button>
+          <button onClick={() => setActiveTab('library')} className={`px-3 md:px-4 py-2 rounded-xl font-bold transition-all flex items-center gap-2 ${activeTab === 'library' ? 'text-emerald-700 bg-emerald-50 shadow-sm' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`}>
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
+            <span className="hidden sm:inline">Library</span>
+          </button>
+          <button onClick={() => setActiveTab('cart')} className={`px-3 md:px-4 py-2 rounded-xl font-bold transition-all relative flex items-center gap-2 ${activeTab === 'cart' ? 'text-emerald-700 bg-emerald-50 shadow-sm' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`}>
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path strokeLinecap="round" strokeLinejoin="round" d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
+            <span className="hidden sm:inline">Cart</span>
+            {cart.length > 0 && <span className="absolute -top-1 -right-1 bg-emerald-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-sm">{cart.length}</span>}
+          </button>
+          <div className="w-px h-6 bg-slate-200 mx-1 hidden sm:block"></div>
+          <button onClick={() => setActiveTab('admin')} className={`p-2.5 rounded-xl transition-all shadow-sm ${activeTab === 'admin' ? 'bg-slate-800 text-white' : 'bg-white text-slate-400 border border-slate-200 hover:bg-slate-50 hover:text-slate-600'}`}>
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path strokeLinecap="round" strokeLinejoin="round" d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          </button>
+        </div>
+      </nav>
+
+      <main className="max-w-6xl mx-auto p-4 sm:p-6 mt-2 flex-grow w-full">
+        
+        {/* ================= STOREFRONT ================= */}
+        {activeTab === 'store' && (
+          <div className="animate-fade-in transition-all duration-300">
+            
+            {/* Phase 7: Modern Hero Section */}
+            <div className="relative bg-gradient-to-br from-emerald-600 via-emerald-700 to-teal-900 text-white py-16 px-8 rounded-[2.5rem] shadow-xl overflow-hidden mb-10 text-center">
+              {/* Abstract Glassmorphism Background Shapes */}
+              <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-10 rounded-full blur-3xl transform translate-x-1/2 -translate-y-1/2"></div>
+              <div className="absolute bottom-0 left-0 w-48 h-48 bg-teal-400 opacity-20 rounded-full blur-2xl transform -translate-x-1/2 translate-y-1/2"></div>
+              
+              <div className="relative z-10">
+                <h2 className="text-4xl md:text-5xl font-black mb-4 tracking-tight drop-shadow-sm">Master Your Exams</h2>
+                <p className="text-emerald-100 font-medium text-lg md:text-xl max-w-2xl mx-auto drop-shadow-sm">Download premium board-standard solutions & notes crafted by expert educators.</p>
+              </div>
+            </div>
+
+            {/* Phase 7: Search and Filter Section */}
+            <div className="flex flex-col lg:flex-row gap-5 mb-10 items-center justify-between bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+              
+              {/* Search Bar */}
+              <div className="relative w-full lg:w-96">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path strokeLinecap="round" strokeLinejoin="round" d="m21 21-4.3-4.3"/></svg>
+                </div>
+                <input 
+                  type="text" 
+                  placeholder="Search for notes..." 
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-emerald-500 focus:bg-white transition-all font-medium text-slate-700"
+                />
+              </div>
+
+              {/* Category Pills */}
+              <div className="flex gap-2 overflow-x-auto w-full lg:w-auto pb-2 lg:pb-0 scrollbar-hide">
+                {categories.map(cat => (
+                  <button 
+                    key={cat}
+                    onClick={() => setSelectedCategory(cat)}
+                    className={`px-5 py-2.5 rounded-xl font-bold whitespace-nowrap transition-all duration-200 border ${
+                      selectedCategory === cat 
+                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-500/20' 
+                      : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:border-slate-300'
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            </div>
+            
+            {loading ? (
+              <div className="text-center py-20 flex flex-col items-center">
+                <div className="w-12 h-12 border-4 border-emerald-100 border-t-emerald-600 rounded-full animate-spin mb-4"></div>
+                <span className="text-slate-500 font-bold">Fetching resources...</span>
+              </div>
+            ) : filteredProducts.length === 0 ? (
+              <div className="text-center py-24 bg-white rounded-[2.5rem] shadow-sm border border-slate-100 flex flex-col items-center">
+                {/* Modern Empty State SVG */}
+                <div className="w-32 h-32 mb-6 text-slate-200">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    <path d="M11 8v2m0 4h.01"></path>
+                  </svg>
+                </div>
+                <h3 className="text-2xl font-bold text-slate-700 mb-2">No notes found</h3>
+                <p className="text-slate-500 font-medium">Try searching with a different keyword or category.</p>
+                {(searchTerm || selectedCategory !== 'All') && (
+                  <button onClick={() => {setSearchTerm(''); setSelectedCategory('All');}} className="mt-6 bg-emerald-50 text-emerald-700 font-bold px-6 py-2 rounded-xl hover:bg-emerald-100 transition-colors">Clear Filters</button>
+                )}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {filteredProducts.map(product => {
+                  const inCart = cart.some(item => item.id === product.id);
+                  const inLibrary = library.some(item => item.id === product.id);
+
+                  return (
+                    <div key={product.id} className="bg-white p-8 rounded-[2rem] shadow-sm hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 border border-slate-100 flex flex-col relative group">
+                      
+                      <div className="flex justify-between items-start mb-6">
+                        <span className="text-[11px] font-black text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg uppercase tracking-widest">{product.category}</span>
+                        <div className="bg-slate-50 w-20 h-20 absolute top-0 right-0 rounded-bl-[4rem] rounded-tr-[2rem] -z-10 group-hover:bg-emerald-50/70 transition-colors duration-500"></div>
+                        <span className="text-3xl font-black text-slate-900 tracking-tight">{product.isFree ? 'FREE' : <><span className="text-lg text-slate-400">৳</span>{product.price}</>}</span>
+                      </div>
+                      
+                      <h3 className="font-extrabold text-2xl text-slate-900 leading-tight mb-3 group-hover:text-emerald-700 transition-colors">{product.title}</h3>
+                      
+                      {product.writer && (
+                        <div className="inline-flex items-center gap-2 text-emerald-600 font-bold text-sm mb-5 bg-emerald-50/50 px-3 py-1.5 rounded-lg w-fit border border-emerald-100/50">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                          {product.writer}
+                        </div>
+                      )}
+                      
+                      <p className="text-slate-500 text-sm leading-relaxed mb-8 flex-grow line-clamp-3">{product.description}</p>
+                      
+                      <div className="space-y-3 pt-6 border-t border-slate-100 mt-auto">
+                        {product.demoLink && (
+                          <a href={product.demoLink} target="_blank" rel="noreferrer" className="w-full flex justify-center items-center gap-2 bg-transparent border-2 border-slate-200 text-slate-600 font-bold py-3 rounded-xl hover:border-slate-800 hover:text-slate-900 transition-all">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                            View Demo PDF
+                          </a>
+                        )}
+
+                        {product.isFree ? (
+                          <button 
+                            onClick={() => handleGetFree(product)}
+                            disabled={inLibrary}
+                            className={`w-full font-bold py-3 rounded-xl shadow-sm transition-all duration-300 flex justify-center items-center gap-2 ${inLibrary ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 text-white hover:shadow-blue-500/30 hover:shadow-lg'}`}
+                          >
+                            {inLibrary ? (
+                              <><svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg> In Library</>
+                            ) : (
+                              <><svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg> Get For Free</>
+                            )}
+                          </button>
+                        ) : (
+                          <button 
+                            onClick={() => { if(!inCart) setCart([...cart, product]); showToast('Added to cart!'); }}
+                            disabled={inCart}
+                            className={`w-full font-bold py-3 rounded-xl transition-all duration-300 flex justify-center items-center gap-2 ${inCart ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200' : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/30 hover:shadow-emerald-600/50'}`}
+                          >
+                            {inCart ? (
+                              <><svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg> In Cart</>
+                            ) : (
+                              <><svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path strokeLinecap="round" strokeLinejoin="round" d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m-2-2h4"/></svg> Add to Cart</>
+                            )}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ================= CART & CHECKOUT ================= */}
+        {activeTab === 'cart' && (
+          <div className="max-w-5xl mx-auto animate-fade-in">
+            <h2 className="text-3xl font-extrabold text-slate-900 mb-8 flex items-center gap-3">
+              <svg className="w-8 h-8 text-emerald-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path strokeLinecap="round" strokeLinejoin="round" d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
+              Secure Checkout
+            </h2>
+            
+            {cart.length === 0 ? (
+              <div className="bg-white rounded-[2.5rem] p-16 text-center shadow-sm border border-slate-100 flex flex-col items-center">
+                <div className="w-32 h-32 text-slate-200 mb-6">
+                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                     <circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle>
+                     <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                     <line x1="8" y1="10" x2="16" y2="10"></line>
+                   </svg>
+                </div>
+                <h3 className="text-2xl font-bold text-slate-800 mb-2">Your cart is feeling light</h3>
+                <p className="text-slate-500 mb-8">Add some premium notes to get started on your preparation.</p>
+                <button onClick={() => setActiveTab('store')} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-8 py-3.5 rounded-xl transition-all shadow-lg shadow-emerald-500/30 flex items-center gap-2">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                  Back to Store
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                {/* Left Col - Summary */}
+                <div className="lg:col-span-7 bg-white p-6 md:p-8 rounded-[2rem] shadow-sm border border-slate-100 h-fit">
+                  <h3 className="font-bold text-xl text-slate-800 mb-6 border-b border-slate-100 pb-4">Order Summary</h3>
+                  <div className="space-y-4 mb-8">
+                    {cart.map(item => (
+                      <div key={item.id} className="flex justify-between items-center p-5 bg-white rounded-2xl border-l-4 border-l-emerald-500 border-y border-r border-slate-100 shadow-sm hover:shadow-md transition-all group">
+                        <div className="flex flex-col">
+                          <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1.5 bg-emerald-50 w-fit px-2 py-0.5 rounded-md">{item.category}</span>
+                          <span className="font-extrabold text-slate-900 text-lg leading-tight">{item.title}</span>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <span className="font-black text-xl text-slate-800">৳{item.price}</span>
+                          <button 
+                            onClick={() => handleRemoveFromCart(item.id)} 
+                            className="w-10 h-10 flex items-center justify-center rounded-xl bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white transition-colors" 
+                            title="Remove from Cart"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                    <h4 className="font-bold text-slate-700 mb-3 text-sm flex items-center gap-2">
+                      <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/></svg>
+                      Have a coupon code?
+                    </h4>
+                    <form onSubmit={(e) => { e.preventDefault(); applyCoupon(); }} className="flex gap-2 mb-6">
+                      <input type="text" value={couponInput} onChange={e => setCouponInput(e.target.value)} placeholder="Enter code" className="flex-1 bg-white border border-slate-200 p-3.5 rounded-xl outline-none focus:border-emerald-500 uppercase font-bold text-slate-700" />
+                      <button type="submit" className="bg-slate-900 text-white px-6 font-bold rounded-xl hover:bg-black transition-colors">Apply</button>
+                    </form>
+
+                    <div className="space-y-2 pt-2">
+                      <div className="flex justify-between text-slate-500 font-medium">
+                        <span>Subtotal</span><span>৳{cartTotal}</span>
+                      </div>
+                      {appliedCoupon && (
+                        <div className="flex justify-between text-emerald-600 font-bold">
+                          <span>Discount ({appliedCoupon.code})</span><span>- ৳{cartTotal * (appliedCoupon.discount / 100)}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between items-end pt-4 mt-2 border-t border-slate-200">
+                        <span className="text-slate-800 font-extrabold text-lg">Total</span>
+                        <span className="text-4xl font-black text-emerald-600 tracking-tight">৳{finalTotal}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Col - Payment Form */}
+                <div className="lg:col-span-5 bg-white p-6 md:p-8 rounded-[2rem] shadow-sm border border-slate-100 h-fit">
+                  <h3 className="font-bold text-xl text-slate-800 mb-6 flex items-center gap-2">
+                    <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>
+                    Payment Details
+                  </h3>
+                  
+                  <div className="bg-emerald-50 p-6 rounded-2xl mb-8 border border-emerald-100">
+                    <p className="text-sm text-emerald-900 font-medium mb-2">1. Send money via bKash/Nagad to:</p>
+                    <p className="text-2xl font-black text-emerald-700 tracking-wider mb-4 bg-white px-4 py-2 rounded-xl border border-emerald-200 w-fit">{storeSettings.paymentNumber}</p>
+                    <p className="text-sm text-emerald-800 font-medium">2. Fill the form below to verify & get access.</p>
+                  </div>
+
+                  <form onSubmit={handleCheckout} className="space-y-5">
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-2">Your Sent From Number</label>
+                      <input name="phone" type="tel" required className="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl outline-none focus:bg-white focus:border-emerald-500 transition-all font-bold" placeholder="01XXXXXXXXX" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-2">Transaction ID (TrxID)</label>
+                      <input name="trxId" type="text" required className="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl outline-none focus:bg-white focus:border-emerald-500 transition-all font-bold uppercase" placeholder="e.g. 9JXXXXX20" />
+                    </div>
+                    <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-emerald-500/30 mt-4 text-lg flex justify-center items-center gap-2">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                      Confirm Order
+                    </button>
+                  </form>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ================= LIBRARY ================= */}
+        {activeTab === 'library' && (
+          <div className="max-w-5xl mx-auto animate-fade-in">
+            <h2 className="text-3xl font-extrabold text-slate-900 mb-8 flex items-center gap-3">
+              <svg className="w-8 h-8 text-emerald-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
+              My Digital Library
+            </h2>
+            {library.length === 0 ? (
+               <div className="bg-white p-16 text-center rounded-[2.5rem] border border-slate-100 shadow-sm flex flex-col items-center">
+                 <div className="w-32 h-32 text-slate-200 mb-6">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+                      <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+                    </svg>
+                 </div>
+                 <h3 className="text-2xl font-bold text-slate-800 mb-2">Your library is empty</h3>
+                 <p className="text-slate-500 max-w-md mx-auto leading-relaxed mb-8">Purchase premium notes or grab the free ones from the store to access them here.</p>
+                 <button onClick={() => setActiveTab('store')} className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold px-8 py-3.5 rounded-xl transition-all flex items-center gap-2">
+                  Browse Notes
+                 </button>
+               </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                {library.map((item, idx) => (
+                  <div key={idx} className="bg-white p-8 rounded-[2rem] shadow-sm border border-emerald-100 flex flex-col hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 group">
+                    <span className="text-xs font-black text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg uppercase tracking-widest w-fit mb-4">{item.category}</span>
+                    <h3 className="font-extrabold text-2xl text-slate-900 mb-6 leading-tight group-hover:text-emerald-700 transition-colors">{item.title}</h3>
+                    
+                    <a href={item.mainLink || '#'} target="_blank" rel="noreferrer" className="mt-auto w-full flex justify-center items-center gap-2 bg-emerald-600 text-white hover:bg-emerald-700 font-bold py-3.5 rounded-xl transition-all shadow-md shadow-emerald-500/20">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                      Read / Download
+                    </a>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ================= ADMIN DASHBOARD ================= */}
+        {activeTab === 'admin' && (
+          <div className="bg-white p-6 md:p-10 rounded-[2.5rem] shadow-sm border border-slate-100 max-w-6xl mx-auto animate-fade-in">
+            <div className="flex justify-between items-center mb-10 border-b border-slate-100 pb-6">
+               <div className="flex items-center gap-4">
+                 <div className="p-3 bg-slate-100 rounded-2xl text-slate-800">
+                   <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path strokeLinecap="round" strokeLinejoin="round" d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                 </div>
+                 <div>
+                   <h2 className="text-3xl font-extrabold text-slate-900">Admin Portal</h2>
+                   {user && <p className="text-slate-500 font-medium mt-1">{user.email}</p>}
+                 </div>
+               </div>
+               {user && (
+                 <button onClick={handleLogout} className="bg-rose-50 text-rose-600 px-6 py-2.5 rounded-xl font-bold hover:bg-rose-100 transition-colors flex items-center gap-2">
+                   <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+                   Logout
+                 </button>
+               )}
+            </div>
+
+            {!user ? (
+              <form onSubmit={handleLogin} className="space-y-4 max-w-sm mx-auto py-12">
+                <div className="text-center mb-8 text-slate-500">
+                  <div className="w-24 h-24 bg-slate-50 rounded-[2rem] flex items-center justify-center mx-auto mb-6 text-slate-300">
+                    <svg className="w-10 h-10" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path strokeLinecap="round" strokeLinejoin="round" d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  </div>
+                  <p className="font-medium text-lg">Secure Access Required</p>
+                </div>
+                <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Admin Email" required className="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl outline-none focus:border-slate-900 focus:bg-white transition-colors font-medium" />
+                <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Password" required className="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl outline-none focus:border-slate-900 focus:bg-white transition-colors font-medium" />
+                <button type="submit" className="w-full bg-slate-900 hover:bg-black text-white font-bold py-4 rounded-xl transition-all shadow-lg mt-4 text-lg">Login</button>
+              </form>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+                
+                {/* LEFT COLUMN */}
+                <div className="lg:col-span-5 space-y-8">
+                  {/* Settings & Coupons */}
+                  <div className="bg-slate-50 p-6 md:p-8 rounded-[2rem] border border-slate-100 space-y-8">
+                    <div>
+                      <h3 className="font-bold text-lg mb-5 text-slate-900 flex items-center gap-2">
+                        <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                        Store Setup
+                      </h3>
+                      <form onSubmit={handleSaveSettings} className="flex gap-2">
+                        <input type="text" placeholder="bKash/Nagad No." required value={newPaymentNumber} onChange={e => setNewPaymentNumber(e.target.value)} className="bg-white border border-slate-200 p-3.5 rounded-xl flex-1 font-bold outline-none focus:border-emerald-500 transition-colors"/>
+                        <button type="submit" className="bg-slate-900 text-white px-6 rounded-xl font-bold hover:bg-black transition-colors">Save</button>
+                      </form>
+                      <p className="text-sm text-slate-500 mt-3 font-medium bg-white px-4 py-2 rounded-lg border border-slate-100 inline-block">Active: <span className="font-bold text-slate-800">{storeSettings.paymentNumber}</span></p>
+                    </div>
+                    
+                    <div className="border-t border-slate-200 pt-8">
+                      <h3 className="font-bold text-lg mb-5 text-slate-900 flex items-center gap-2">
+                        <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/></svg>
+                        Create Coupon
+                      </h3>
+                      <form onSubmit={handleAddCoupon} className="flex gap-2 mb-4">
+                        <input type="text" placeholder="CODE" required value={newCoupon.code} onChange={e => setNewCoupon({...newCoupon, code: e.target.value})} className="w-1/2 bg-white border border-slate-200 p-3.5 rounded-xl uppercase font-bold outline-none focus:border-blue-500 transition-colors"/>
+                        <input type="number" placeholder="%" required value={newCoupon.discount} onChange={e => setNewCoupon({...newCoupon, discount: e.target.value})} className="w-1/4 bg-white border border-slate-200 p-3.5 rounded-xl font-bold outline-none focus:border-blue-500 transition-colors"/>
+                        <button type="submit" className="bg-blue-600 text-white font-bold rounded-xl w-1/4 hover:bg-blue-700 transition-colors flex items-center justify-center">
+                          <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M5 12h14"/></svg>
+                        </button>
+                      </form>
+                      <div className="space-y-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
+                        {coupons.map(c => (
+                           <div key={c.id} className="flex justify-between items-center bg-white p-3.5 px-5 rounded-xl border border-slate-100 text-sm font-bold text-slate-700 shadow-sm">
+                             <span>{c.code} <span className="text-emerald-600 ml-1 bg-emerald-50 px-2 py-0.5 rounded-md">({c.discount}%)</span></span>
+                           </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Add Product */}
+                  <div className="bg-emerald-50/50 p-6 md:p-8 rounded-[2rem] border border-emerald-100">
+                    <h3 className="font-extrabold text-xl mb-6 text-slate-900 flex items-center gap-2">
+                      <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                      Publish Note
+                    </h3>
+                    <form onSubmit={handleAddProduct} className="space-y-4">
+                      
+                      <div className="flex items-center justify-between p-4 bg-white rounded-xl border border-slate-200 shadow-sm cursor-pointer" onClick={() => setNewProduct({...newProduct, isFree: !newProduct.isFree})}>
+                        <label className="font-bold text-slate-700 cursor-pointer">Make this note Free?</label>
+                        <input type="checkbox" checked={newProduct.isFree} onChange={e => setNewProduct({...newProduct, isFree: e.target.checked})} className="w-5 h-5 accent-emerald-600 cursor-pointer pointer-events-none"/>
+                      </div>
+
+                      <input type="text" placeholder="Note Title (e.g. Vector)" required value={newProduct.title} onChange={e => setNewProduct({...newProduct, title: e.target.value})} className="w-full bg-white border border-slate-200 p-4 rounded-xl font-bold outline-none focus:border-emerald-500 transition-colors"/>
+                      
+                      <div className="flex gap-4">
+                        <input type="text" placeholder="Writer Name" value={newProduct.writer} onChange={e => setNewProduct({...newProduct, writer: e.target.value})} className="w-full bg-white border border-slate-200 p-4 rounded-xl font-medium outline-none focus:border-emerald-500 transition-colors"/>
+                        {!newProduct.isFree && (
+                          <input type="number" placeholder="Price ৳" required value={newProduct.price} onChange={e => setNewProduct({...newProduct, price: e.target.value})} className="w-32 bg-white border border-slate-200 p-4 rounded-xl font-bold outline-none focus:border-emerald-500 transition-colors"/>
+                        )}
+                      </div>
+                      
+                      <select value={newProduct.category} onChange={e => setNewProduct({...newProduct, category: e.target.value})} className="w-full bg-white border border-slate-200 p-4 rounded-xl font-bold text-slate-700 outline-none focus:border-emerald-500 transition-colors appearance-none">
+                        <option>Physics</option><option>Chemistry</option><option>Higher Math</option><option>Admission</option>
+                      </select>
+
+                      <textarea placeholder="Description (What's inside?)" rows="3" value={newProduct.description} onChange={e => setNewProduct({...newProduct, description: e.target.value})} className="w-full bg-white border border-slate-200 p-4 rounded-xl font-medium outline-none resize-none focus:border-emerald-500 transition-colors"></textarea>
+                      
+                      <input type="url" placeholder="Demo PDF Drive Link (Optional)" value={newProduct.demoLink} onChange={e => setNewProduct({...newProduct, demoLink: e.target.value})} className="w-full bg-white border border-slate-200 p-4 rounded-xl outline-none text-sm transition-colors focus:border-emerald-500"/>
+                      <input type="url" placeholder="Main PDF Drive Link (Required)" required value={newProduct.mainLink} onChange={e => setNewProduct({...newProduct, mainLink: e.target.value})} className="w-full bg-emerald-100/50 border border-emerald-300 p-4 rounded-xl outline-none text-sm font-medium focus:border-emerald-500 transition-colors"/>
+                      
+                      <button type="submit" className="w-full bg-emerald-600 text-white py-4 rounded-xl font-extrabold hover:bg-emerald-700 transition-all shadow-md mt-4 text-lg">Publish Note</button>
+                    </form>
+                  </div>
+                </div>
+
+                {/* RIGHT COLUMN */}
+                <div className="lg:col-span-7 space-y-8">
+                  
+                  {/* Orders */}
+                  <div>
+                    <h3 className="font-extrabold text-xl mb-5 text-slate-900 flex items-center gap-2">
+                      <svg className="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                      Recent Orders
+                    </h3>
+                    {orders.length === 0 ? <p className="text-slate-500 bg-slate-50 p-10 rounded-[2rem] text-center border border-slate-100 font-medium">No orders pending.</p> : (
+                      <div className="overflow-x-auto bg-white rounded-2xl border border-slate-200 shadow-sm">
+                        <table className="w-full text-left">
+                          <thead className="bg-slate-50 text-slate-500 text-sm border-b border-slate-200">
+                            <tr><th className="p-5 font-bold uppercase tracking-wider">Details</th><th className="p-5 font-bold uppercase tracking-wider">Amount</th><th className="p-5 font-bold text-right uppercase tracking-wider">Action</th></tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100">
+                            {orders.map(order => (
+                              <tr key={order.id} className="hover:bg-slate-50 transition-colors">
+                                <td className="p-5">
+                                  <p className="font-bold text-slate-900 text-base">{order.phone}</p>
+                                  <p className="text-xs font-mono text-slate-500 font-medium mt-1">Trx: <span className="text-emerald-600 font-bold">{order.trxId}</span></p>
+                                </td>
+                                <td className="p-5 font-black text-slate-800 text-lg">৳{order.totalPaid}</td>
+                                <td className="p-5 text-right">
+                                  {order.status === 'Pending' ? (
+                                    <button onClick={() => handleApproveOrder(order.id, order.items)} className="bg-emerald-500 text-white px-5 py-2.5 text-sm rounded-xl hover:bg-emerald-600 font-bold shadow-sm transition-all shadow-emerald-500/20">Approve</button>
+                                  ) : <span className="bg-slate-100 text-slate-400 font-bold px-4 py-2 rounded-xl text-sm border border-slate-200">Approved</span>}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Products List */}
+                  <div className="pt-4">
+                     <h3 className="font-extrabold text-xl mb-5 text-slate-900 flex items-center gap-2">
+                       <svg className="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
+                       Uploaded Notes ({products.length})
+                     </h3>
+                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                       {products.map(p => (
+                         <div key={p.id} className="flex justify-between items-center bg-white border border-slate-200 p-5 rounded-2xl shadow-sm hover:shadow-md transition-all group">
+                           <div>
+                             <p className="font-bold text-slate-800 line-clamp-1">{p.title}</p>
+                             <p className="text-sm font-black text-emerald-600 mt-1">{p.isFree ? 'Free' : `৳${p.price}`}</p>
+                           </div>
+                           <button onClick={() => handleDeleteProduct(p.id)} className="text-rose-400 bg-rose-50 p-2.5 rounded-xl hover:bg-rose-500 hover:text-white font-bold transition-colors" title="Delete">
+                             <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                           </button>
+                         </div>
+                       ))}
+                     </div>
+                  </div>
+
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </main>
+
+      {/* Phase 7: Professional Footer */}
+      <footer className="bg-slate-900 text-slate-400 py-12 mt-12 rounded-t-[3rem] shadow-inner">
+        <div className="max-w-6xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-8 text-center md:text-left">
+          
+          <div className="flex flex-col items-center md:items-start">
+            <h2 className="text-2xl font-black text-white tracking-tight mb-4"><span className="text-emerald-500">Solution</span> Hub</h2>
+            <p className="text-sm leading-relaxed max-w-xs">Empowering HSC students with premium quality notes, solutions, and admission guides. Built for excellence.</p>
+          </div>
+          
+          <div className="flex flex-col items-center md:items-start">
+            <h3 className="text-white font-bold mb-4 uppercase tracking-wider text-sm">Quick Links</h3>
+            <ul className="space-y-2 text-sm font-medium">
+              <li><button onClick={() => setActiveTab('store')} className="hover:text-emerald-400 transition-colors">Browse Store</button></li>
+              <li><button onClick={() => setActiveTab('cart')} className="hover:text-emerald-400 transition-colors">My Cart</button></li>
+              <li><button onClick={() => setActiveTab('library')} className="hover:text-emerald-400 transition-colors">Digital Library</button></li>
+            </ul>
+          </div>
+          
+          <div className="flex flex-col items-center md:items-start">
+            <h3 className="text-white font-bold mb-4 uppercase tracking-wider text-sm">Contact Support</h3>
+            <ul className="space-y-3 text-sm font-medium">
+              <li className="flex items-center gap-2"><svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg> support@solutionhub.com</li>
+              <li className="flex items-center gap-2"><svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg> Hotline: 01XXXXX</li>
+            </ul>
+          </div>
+
+        </div>
+        <div className="mt-12 pt-6 border-t border-slate-800 text-center text-xs font-medium text-slate-500">
+          &copy; {new Date().getFullYear()} HSC Solution Hub. All rights reserved.
+        </div>
+      </footer>
+
+      {/* Global CSS for Animations */}
+      <style>{`
+        .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
+      `}</style>
+    </div>
+  );
+}
+```
