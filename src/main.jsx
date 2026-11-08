@@ -1,22 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
-import { initializeApp } from 'firebase/app';
-import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from 'firebase/auth';
-import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, getDoc, setDoc } from 'firebase/firestore';
+import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from 'firebase/auth';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, getDoc, setDoc } from 'firebase/firestore';
 
-// ফায়ারবেস কনফিগারেশন
-const firebaseConfig = {
-  apiKey: "AIzaSyBxzTKy4vi9VcGFM7kg4pePDukB-aWhoAA",
-  authDomain: "premium-hsc-notes.firebaseapp.com",
-  projectId: "premium-hsc-notes",
-  storageBucket: "premium-hsc-notes.firebasestorage.app",
-  messagingSenderId: "938896449795",
-  appId: "1:938896449795:web:73f7516e756df73aea0936"
-};
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+// আমাদের নতুন তৈরি করা config ফোল্ডার থেকে ফায়ারবেস ইমপোর্ট করা হলো
+import { auth, db } from './config/firebase';
 
 // আইকনসমূহ (SVG)
 const Icons = {
@@ -617,9 +605,7 @@ function App() {
   );
 }
 
-// ==========================================
-// RENDER LOGIC (THE FIX FOR NETLIFY BLANK PAGE)
-// ==========================================
+// রেন্ডার লজিক
 const rootElement = document.getElementById('root');
 if (rootElement) {
   createRoot(rootElement).render(<App />);
