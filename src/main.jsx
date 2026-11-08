@@ -10,6 +10,7 @@ import Store from './pages/Store';
 import Cart from './pages/Cart';
 import Library from './pages/Library';
 import Admin from './pages/Admin';
+import Auth from './pages/Auth'; // <-- নতুন স্টুডেন্ট লগইন পেজ ইমপোর্ট করা হলো
 import PdfViewer from './components/PdfViewer';
 
 function App() {
@@ -39,7 +40,6 @@ function App() {
   const [newCoupon, setNewCoupon] = useState({ code: '', discount: '' });
   const [newPaymentNumber, setNewPaymentNumber] = useState('');
 
-  // Global PDF Viewer State
   const [viewerOpen, setViewerOpen] = useState(false);
   const [currentPdfUrl, setCurrentPdfUrl] = useState('');
   const [currentTitle, setCurrentTitle] = useState('');
@@ -91,6 +91,7 @@ function App() {
     try {
       await signInWithEmailAndPassword(auth, email, password);
       showToast('Successfully logged in as Admin!');
+      setActiveTab('admin');
     } catch (error) {
       showToast('Login failed!', 'error');
     }
@@ -99,6 +100,7 @@ function App() {
   const handleLogout = () => {
     signOut(auth);
     showToast('Logged out');
+    setActiveTab('store');
   };
 
   const handleAddProduct = async (e) => {
@@ -216,7 +218,14 @@ function App() {
         </div>
       )}
 
-      <Navbar activeTab={activeTab} setActiveTab={setActiveTab} cartCount={cart.length} />
+      {/* নেভবারে user এবং handleLogout পাস করা হলো */}
+      <Navbar 
+        activeTab={activeTab} 
+        setActiveTab={setActiveTab} 
+        cartCount={cart.length} 
+        user={user} 
+        handleLogout={handleLogout} 
+      />
 
       <main className="flex-grow max-w-5xl mx-auto p-4 md:p-6 w-full mb-10">
         
@@ -254,6 +263,11 @@ function App() {
             handleAddProduct={handleAddProduct} newProduct={newProduct} setNewProduct={setNewProduct} 
             orders={orders} handleApproveOrder={handleApproveOrder} products={products} handleDeleteProduct={handleDeleteProduct} 
           />
+        )}
+
+        {/* নতুন Auth পেজের কন্ডিশন যোগ করা হলো */}
+        {activeTab === 'auth' && (
+          <Auth showToast={showToast} setActiveTab={setActiveTab} />
         )}
 
       </main>
