@@ -67,16 +67,19 @@ export default function Admin({
             <div className="bg-emerald-50 p-6 rounded-2xl border border-emerald-100">
               <h3 className="font-bold text-lg mb-4 text-emerald-900 flex items-center gap-2"><svg className="w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" /></svg> Create Coupon</h3>
               <form onSubmit={handleAddCoupon} className="flex gap-2">
-                <input type="text" placeholder="CODE" required value={newCoupon.code} onChange={e => setNewCoupon(e.target.value)} className="border border-emerald-200 p-3 rounded-xl w-1/2 uppercase focus:ring-2 focus:ring-emerald-500 outline-none"/>
+                {/* এখানেই বাগ ছিল, এখন ঠিক করা হয়েছে */}
+                <input type="text" placeholder="CODE" required value={newCoupon.code} onChange={e => setNewCoupon({...newCoupon, code: e.target.value})} className="border border-emerald-200 p-3 rounded-xl w-1/2 uppercase focus:ring-2 focus:ring-emerald-500 outline-none"/>
                 <input type="number" placeholder="%" required value={newCoupon.discount} onChange={e => setNewCoupon({...newCoupon, discount: e.target.value})} className="border border-emerald-200 p-3 rounded-xl w-1/4 focus:ring-2 focus:ring-emerald-500 outline-none"/>
                 <button type="submit" className="bg-emerald-600 text-white px-4 py-3 rounded-xl font-bold w-1/4 hover:bg-emerald-700 transition">+</button>
               </form>
             </div>
           </div>
 
-          {/* Add Product Form */}
-          <div className="bg-gradient-to-b from-white to-gray-50 p-6 md:p-8 rounded-2xl border border-gray-200 shadow-sm">
-            <h3 className="font-extrabold text-2xl mb-6 text-gray-900 flex items-center gap-2">📝 Publish Note</h3>
+          {/* Add / Edit Product Form */}
+          <div id="product-form" className="bg-gradient-to-b from-white to-gray-50 p-6 md:p-8 rounded-2xl border border-gray-200 shadow-sm scroll-mt-24">
+            <h3 className="font-extrabold text-2xl mb-6 text-gray-900 flex items-center gap-2">
+              {newProduct.id ? '📝 Update Note' : '📝 Publish Note'}
+            </h3>
             <form onSubmit={handleAddProduct} className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div className="md:col-span-2 bg-white p-4 rounded-xl border border-gray-200 flex items-center justify-between">
                 <span className="font-bold text-gray-700">Make this note Free?</span>
@@ -102,7 +105,16 @@ export default function Admin({
               <input type="url" placeholder="Demo PDF Drive Link (Optional)" value={newProduct.demoLink} onChange={e => setNewProduct({...newProduct, demoLink: e.target.value})} className="border border-gray-300 p-4 rounded-xl w-full focus:ring-2 focus:ring-emerald-500 outline-none"/>
               <input type="url" placeholder="Main PDF Drive Link (Required)" required value={newProduct.mainLink} onChange={e => setNewProduct({...newProduct, mainLink: e.target.value})} className="border border-emerald-300 bg-emerald-50 p-4 rounded-xl w-full focus:ring-2 focus:ring-emerald-500 outline-none"/>
               
-              <button type="submit" className="md:col-span-2 bg-emerald-600 text-white py-4 rounded-xl font-extrabold text-lg hover:bg-emerald-700 shadow-md transition mt-2">Publish Note</button>
+              <div className="md:col-span-2 flex gap-3 mt-2">
+                <button type="submit" className="flex-1 bg-emerald-600 text-white py-4 rounded-xl font-extrabold text-lg hover:bg-emerald-700 shadow-md transition">
+                  {newProduct.id ? 'Update Note' : 'Publish Note'}
+                </button>
+                {newProduct.id && (
+                  <button type="button" onClick={() => setNewProduct({ title: '', price: '', category: 'Physics', writer: '', description: '', demoLink: '', mainLink: '', isFree: false })} className="bg-gray-300 text-gray-800 px-6 rounded-xl font-bold hover:bg-gray-400 transition">
+                    Cancel
+                  </button>
+                )}
+              </div>
             </form>
           </div>
 
@@ -161,7 +173,11 @@ export default function Admin({
                      <p className="font-bold text-gray-800 text-lg mb-1">{p.title}</p>
                      <p className="text-sm font-black text-emerald-600">{p.isFree ? 'Free' : `৳${p.price}`}</p>
                    </div>
-                   <button onClick={() => handleDeleteProduct(p.id)} className="bg-red-50 text-red-500 px-4 py-2 rounded-lg hover:bg-red-100 hover:text-red-600 font-bold transition">Delete</button>
+                   <div className="flex gap-2">
+                     {/* নতুন এডিট বাটন */}
+                     <button onClick={() => { setNewProduct(p); document.getElementById('product-form').scrollIntoView({ behavior: 'smooth' }); }} className="bg-blue-50 text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-100 font-bold transition">Edit</button>
+                     <button onClick={() => handleDeleteProduct(p.id)} className="bg-red-50 text-red-500 px-4 py-2 rounded-lg hover:bg-red-100 hover:text-red-600 font-bold transition">Delete</button>
+                   </div>
                  </div>
                ))}
              </div>
