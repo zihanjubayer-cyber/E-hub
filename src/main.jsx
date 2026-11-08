@@ -13,6 +13,9 @@ import Admin from './pages/Admin';
 import Auth from './pages/Auth'; 
 import PdfViewer from './components/PdfViewer';
 
+// 🛑 এখানে তোমার অ্যাডমিন ইমেইলগুলো দেওয়া আছে 
+const ADMIN_EMAILS = ['zihanjubayer@gmail.com', 'talhajubayer312@gmail.com']; 
+
 function App() {
   const [activeTab, setActiveTab] = useState('store'); 
   const [products, setProducts] = useState([]);
@@ -43,6 +46,9 @@ function App() {
   const [viewerOpen, setViewerOpen] = useState(false);
   const [currentPdfUrl, setCurrentPdfUrl] = useState('');
   const [currentTitle, setCurrentTitle] = useState('');
+
+  // লগইন করা ইউজার কি অ্যাডমিন? (True / False)
+  const isAdmin = user && ADMIN_EMAILS.includes(user.email);
 
   const openPdf = (url, title) => {
     setCurrentPdfUrl(url);
@@ -76,7 +82,10 @@ function App() {
     fetchData();
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
-      if (currentUser) fetchOrders();
+      // শুধুমাত্র অ্যাডমিন লগইন করলেই অর্ডার ফেচ হবে (সিকিউরিটি)
+      if (currentUser && ADMIN_EMAILS.includes(currentUser.email)) {
+        fetchOrders();
+      }
     });
     return () => unsubscribe();
   }, []);
@@ -89,9 +98,15 @@ function App() {
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      showToast('Successfully logged in as Admin!');
-      setActiveTab('admin');
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      // অ্যাডমিন লগইন ফর্ম থেকে লগইন করলে চেক করবে ইমেইলটা অ্যাডমিন কি না
+      if (ADMIN_EMAILS.includes(userCredential.user.email)) {
+        showToast('Successfully logged in as Admin!');
+        setActiveTab('admin');
+      } else {
+        showToast('Access Denied! You are not an Admin.', 'error');
+        signOut(auth); // অ্যাডমিন না হলে সাথে সাথে বের করে দেবে
+      }
     } catch (error) {
       showToast('Login failed!', 'error');
     }
@@ -103,35 +118,24 @@ function App() {
     setActiveTab('store');
   };
 
-  // আপডেট করা handleAddProduct (যেখানে এডিট এবং নতুন অ্যাড করার লজিক একসাথে আছে)
   const handleAddProduct = async (e) => {
     e.preventDefault();
     try {
       if (newProduct.id) {
-        // যদি আইডির অস্তিত্ব থাকে, তার মানে অ্যাডমিন এডিট করছে (Update Logic)
         await updateDoc(doc(db, "products", newProduct.id), {
-          title: newProduct.title,
-          category: newProduct.category,
-          writer: newProduct.writer,
-          description: newProduct.description,
-          demoLink: newProduct.demoLink,
-          mainLink: newProduct.mainLink,
-          isFree: newProduct.isFree,
-          price: newProduct.isFree ? 0 : Number(newProduct.price)
+          title: newProduct.title, category: newProduct.category, writer: newProduct.writer,
+          description: newProduct.description, demoLink: newProduct.demoLink, mainLink: newProduct.mainLink,
+          isFree: newProduct.isFree, price: newProduct.isFree ? 0 : Number(newProduct.price)
         });
         showToast("Product updated successfully!");
       } else {
-        // আইডি না থাকলে নতুন নোট আপলোড হচ্ছে (Add Logic)
         await addDoc(collection(db, "products"), {
-          ...newProduct,
-          price: newProduct.isFree ? 0 : Number(newProduct.price)
+          ...newProduct, price: newProduct.isFree ? 0 : Number(newProduct.price)
         });
         showToast("Product added successfully!");
       }
-      
-      // কাজ শেষে ফর্ম ফাঁকা করে দেওয়া
       setNewProduct({ title: '', price: '', category: 'Physics', writer: '', description: '', demoLink: '', mainLink: '', isFree: false });
-      fetchData(); // নতুন ডেটা লোড করা
+      fetchData();
     } catch (error) {
       showToast("Error saving product", 'error');
     }
@@ -160,8 +164,7 @@ function App() {
   const handleAddCoupon = async (e) => {
     e.preventDefault();
     await addDoc(collection(db, "coupons"), {
-      code: newCoupon.code.toUpperCase(),
-      discount: Number(newCoupon.discount)
+      code: newCoupon.code.toUpperCase(), discount: Number(newCoupon.discount)
     });
     showToast("Coupon added!");
     setNewCoupon({ code: '', discount: '' });
@@ -186,20 +189,12 @@ function App() {
     e.preventDefault();
     const phone = e.target.phone.value;
     const trxId = e.target.trxId.value;
-    
     try {
       await addDoc(collection(db, "orders"), {
-        phone,
-        trxId,
-        items: cart,
-        totalPaid: finalTotal,
-        status: 'Pending',
-        timestamp: new Date().toISOString()
+        phone, trxId, items: cart, totalPaid: finalTotal, status: 'Pending', timestamp: new Date().toISOString()
       });
       showToast('Order submitted! Wait for admin approval.');
-      setCart([]);
-      setAppliedCoupon(null);
-      setActiveTab('library');
+      setCart([]); setAppliedCoupon(null); setActiveTab('library');
     } catch (error) {
       showToast('Error submitting order', 'error');
     }
@@ -237,45 +232,26 @@ function App() {
         </div>
       )}
 
-      {/* নেভবারে user এবং handleLogout পাস করা হলো */}
-      <Navbar 
-        activeTab={activeTab} 
-        setActiveTab={setActiveTab} 
-        cartCount={cart.length} 
-        user={user} 
-        handleLogout={handleLogout} 
-      />
+      <Navbar activeTab={activeTab} setActiveTab={setActiveTab} cartCount={cart.length} user={user} handleLogout={handleLogout} />
 
       <main className="flex-grow max-w-5xl mx-auto p-4 md:p-6 w-full mb-10">
         
         {activeTab === 'store' && (
-          <Store 
-            searchTerm={searchTerm} setSearchTerm={setSearchTerm} 
-            selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} 
-            loading={loading} filteredProducts={filteredProducts} 
-            cart={cart} setCart={setCart} library={library} 
-            handleGetFree={handleGetFree} showToast={showToast} 
-            openPdf={openPdf}
-          />
+          <Store searchTerm={searchTerm} setSearchTerm={setSearchTerm} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} loading={loading} filteredProducts={filteredProducts} cart={cart} setCart={setCart} library={library} handleGetFree={handleGetFree} showToast={showToast} openPdf={openPdf} />
         )}
 
         {activeTab === 'cart' && (
-          <Cart 
-            cart={cart} removeFromCart={removeFromCart} setActiveTab={setActiveTab} 
-            couponInput={couponInput} setCouponInput={setCouponInput} 
-            applyCoupon={applyCoupon} appliedCoupon={appliedCoupon} 
-            cartTotal={cartTotal} finalTotal={finalTotal} 
-            storeSettings={storeSettings} handleCheckout={handleCheckout} 
-          />
+          <Cart cart={cart} removeFromCart={removeFromCart} setActiveTab={setActiveTab} couponInput={couponInput} setCouponInput={setCouponInput} applyCoupon={applyCoupon} appliedCoupon={appliedCoupon} cartTotal={cartTotal} finalTotal={finalTotal} storeSettings={storeSettings} handleCheckout={handleCheckout} />
         )}
 
         {activeTab === 'library' && (
           <Library library={library} openPdf={openPdf} />
         )}
 
+        {/* 🛑 অ্যাডমিন প্যানেলে isAdmin প্রপস পাঠানো হলো */}
         {activeTab === 'admin' && (
           <Admin 
-            user={user} handleLogout={handleLogout} handleLogin={handleLogin} 
+            isAdmin={isAdmin} user={user} handleLogout={handleLogout} handleLogin={handleLogin} 
             email={email} setEmail={setEmail} password={password} setPassword={setPassword} 
             handleSaveSettings={handleSaveSettings} newPaymentNumber={newPaymentNumber} setNewPaymentNumber={setNewPaymentNumber} 
             storeSettings={storeSettings} handleAddCoupon={handleAddCoupon} newCoupon={newCoupon} setNewCoupon={setNewCoupon} 
@@ -284,21 +260,13 @@ function App() {
           />
         )}
 
-        {/* নতুন Auth পেজের কন্ডিশন যোগ করা হলো */}
         {activeTab === 'auth' && (
           <Auth showToast={showToast} setActiveTab={setActiveTab} />
         )}
 
       </main>
-
       <Footer />
-
-      <PdfViewer 
-        isOpen={viewerOpen} 
-        onClose={() => setViewerOpen(false)} 
-        pdfUrl={currentPdfUrl} 
-        title={currentTitle} 
-      />
+      <PdfViewer isOpen={viewerOpen} onClose={() => setViewerOpen(false)} pdfUrl={currentPdfUrl} title={currentTitle} />
     </div>
   );
 }
