@@ -6,6 +6,7 @@ const Icons = {
 
 export default function Admin({
   user,
+  isAdmin, // <-- সিকিউরিটি প্রপস রিসিভ করা হলো
   handleLogout,
   handleLogin,
   email,
@@ -38,25 +39,41 @@ export default function Admin({
          {user && <button onClick={handleLogout} className="mt-4 md:mt-0 bg-red-50 text-red-600 px-5 py-2 rounded-xl font-bold hover:bg-red-100 transition">Logout</button>}
       </div>
 
-      {!user ? (
-        <form onSubmit={handleLogin} className="space-y-5 max-w-sm mx-auto py-12">
-          <div className="text-center mb-8">
-            <div className="bg-gray-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
-              {Icons.Lock}
+      {/* যদি অ্যাডমিন না হয়, তবে চেক করবে সে স্টুডেন্ট নাকি লগআউট অবস্থায় আছে */}
+      {!isAdmin ? (
+        user ? (
+          // স্টুডেন্ট লগইন করা থাকলে এই মেসেজ দেখাবে 🛑
+          <div className="text-center py-20 animate-fade-in">
+            <div className="bg-red-50 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6">
+              <span className="text-red-500 text-4xl">🚫</span>
             </div>
-            <h3 className="text-xl font-bold text-gray-800">Authorized Access Only</h3>
+            <h3 className="text-2xl font-bold text-gray-900 mb-2">Access Denied!</h3>
+            <p className="text-gray-500 mb-8 max-w-sm mx-auto">This portal is strictly restricted to administrators. You are currently logged in as a student.</p>
+            <button onClick={handleLogout} className="bg-gray-900 text-white px-8 py-3 rounded-xl font-bold hover:bg-black transition shadow-lg">
+              Logout to change account
+            </button>
           </div>
-          <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Admin Email" required className="w-full border border-gray-300 p-4 rounded-xl focus:ring-2 focus:ring-gray-800 outline-none" />
-          <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Password" required className="w-full border border-gray-300 p-4 rounded-xl focus:ring-2 focus:ring-gray-800 outline-none" />
-          <button type="submit" className="w-full bg-gray-900 hover:bg-black text-white font-bold text-lg py-4 rounded-xl shadow-lg transition">Login to Dashboard</button>
-        </form>
+        ) : (
+          // কেউ লগইন করা না থাকলে অ্যাডমিন লগইন ফর্ম দেখাবে 🔐
+          <form onSubmit={handleLogin} className="space-y-5 max-w-sm mx-auto py-12">
+            <div className="text-center mb-8">
+              <div className="bg-gray-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
+                {Icons.Lock}
+              </div>
+              <h3 className="text-xl font-bold text-gray-800">Authorized Access Only</h3>
+            </div>
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Admin Email" required className="w-full border border-gray-300 p-4 rounded-xl focus:ring-2 focus:ring-gray-800 outline-none" />
+            <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Password" required className="w-full border border-gray-300 p-4 rounded-xl focus:ring-2 focus:ring-gray-800 outline-none" />
+            <button type="submit" className="w-full bg-gray-900 hover:bg-black text-white font-bold text-lg py-4 rounded-xl shadow-lg transition">Login to Dashboard</button>
+          </form>
+        )
       ) : (
+        // যদি সে সত্যিকারের অ্যাডমিন হয়, তবেই ড্যাশবোর্ড দেখাবে ✅
         <div className="space-y-12">
           
-          {/* Store Settings & Coupons */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-gray-50 p-6 rounded-2xl border border-gray-200">
-              <h3 className="font-bold text-lg mb-4 text-gray-800 flex items-center gap-2"><svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg> Store Setup</h3>
+              <h3 className="font-bold text-lg mb-4 text-gray-800 flex items-center gap-2">Store Setup</h3>
               <form onSubmit={handleSaveSettings} className="flex gap-2">
                 <input type="text" placeholder="bKash/Nagad No." required value={newPaymentNumber} onChange={e => setNewPaymentNumber(e.target.value)} className="border border-gray-300 p-3 rounded-xl flex-1 focus:ring-2 focus:ring-gray-800 outline-none"/>
                 <button type="submit" className="bg-gray-900 text-white px-6 py-3 rounded-xl font-bold hover:bg-black transition">Save</button>
@@ -65,9 +82,8 @@ export default function Admin({
             </div>
 
             <div className="bg-emerald-50 p-6 rounded-2xl border border-emerald-100">
-              <h3 className="font-bold text-lg mb-4 text-emerald-900 flex items-center gap-2"><svg className="w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" /></svg> Create Coupon</h3>
+              <h3 className="font-bold text-lg mb-4 text-emerald-900 flex items-center gap-2">Create Coupon</h3>
               <form onSubmit={handleAddCoupon} className="flex gap-2">
-                {/* এখানেই বাগ ছিল, এখন ঠিক করা হয়েছে */}
                 <input type="text" placeholder="CODE" required value={newCoupon.code} onChange={e => setNewCoupon({...newCoupon, code: e.target.value})} className="border border-emerald-200 p-3 rounded-xl w-1/2 uppercase focus:ring-2 focus:ring-emerald-500 outline-none"/>
                 <input type="number" placeholder="%" required value={newCoupon.discount} onChange={e => setNewCoupon({...newCoupon, discount: e.target.value})} className="border border-emerald-200 p-3 rounded-xl w-1/4 focus:ring-2 focus:ring-emerald-500 outline-none"/>
                 <button type="submit" className="bg-emerald-600 text-white px-4 py-3 rounded-xl font-bold w-1/4 hover:bg-emerald-700 transition">+</button>
@@ -75,7 +91,6 @@ export default function Admin({
             </div>
           </div>
 
-          {/* Add / Edit Product Form */}
           <div id="product-form" className="bg-gradient-to-b from-white to-gray-50 p-6 md:p-8 rounded-2xl border border-gray-200 shadow-sm scroll-mt-24">
             <h3 className="font-extrabold text-2xl mb-6 text-gray-900 flex items-center gap-2">
               {newProduct.id ? '📝 Update Note' : '📝 Publish Note'}
@@ -118,7 +133,6 @@ export default function Admin({
             </form>
           </div>
 
-          {/* Orders Management */}
           <div>
             <h3 className="font-extrabold text-2xl mb-6 text-gray-900 flex items-center gap-2">📦 Recent Orders</h3>
             {orders.length === 0 ? (
@@ -163,7 +177,6 @@ export default function Admin({
             )}
           </div>
 
-          {/* Manage Products */}
           <div>
              <h3 className="font-extrabold text-2xl mb-6 text-gray-900 flex items-center gap-2">📚 Uploaded Notes</h3>
              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -174,7 +187,6 @@ export default function Admin({
                      <p className="text-sm font-black text-emerald-600">{p.isFree ? 'Free' : `৳${p.price}`}</p>
                    </div>
                    <div className="flex gap-2">
-                     {/* নতুন এডিট বাটন */}
                      <button onClick={() => { setNewProduct(p); document.getElementById('product-form').scrollIntoView({ behavior: 'smooth' }); }} className="bg-blue-50 text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-100 font-bold transition">Edit</button>
                      <button onClick={() => handleDeleteProduct(p.id)} className="bg-red-50 text-red-500 px-4 py-2 rounded-lg hover:bg-red-100 hover:text-red-600 font-bold transition">Delete</button>
                    </div>
