@@ -10,7 +10,7 @@ import Store from './pages/Store';
 import Cart from './pages/Cart';
 import Library from './pages/Library';
 import Admin from './pages/Admin';
-import Auth from './pages/Auth'; // <-- নতুন স্টুডেন্ট লগইন পেজ ইমপোর্ট করা হলো
+import Auth from './pages/Auth'; 
 import PdfViewer from './components/PdfViewer';
 
 function App() {
@@ -103,18 +103,37 @@ function App() {
     setActiveTab('store');
   };
 
+  // আপডেট করা handleAddProduct (যেখানে এডিট এবং নতুন অ্যাড করার লজিক একসাথে আছে)
   const handleAddProduct = async (e) => {
     e.preventDefault();
     try {
-      await addDoc(collection(db, "products"), {
-        ...newProduct,
-        price: newProduct.isFree ? 0 : Number(newProduct.price)
-      });
-      showToast("Product added successfully!");
+      if (newProduct.id) {
+        // যদি আইডির অস্তিত্ব থাকে, তার মানে অ্যাডমিন এডিট করছে (Update Logic)
+        await updateDoc(doc(db, "products", newProduct.id), {
+          title: newProduct.title,
+          category: newProduct.category,
+          writer: newProduct.writer,
+          description: newProduct.description,
+          demoLink: newProduct.demoLink,
+          mainLink: newProduct.mainLink,
+          isFree: newProduct.isFree,
+          price: newProduct.isFree ? 0 : Number(newProduct.price)
+        });
+        showToast("Product updated successfully!");
+      } else {
+        // আইডি না থাকলে নতুন নোট আপলোড হচ্ছে (Add Logic)
+        await addDoc(collection(db, "products"), {
+          ...newProduct,
+          price: newProduct.isFree ? 0 : Number(newProduct.price)
+        });
+        showToast("Product added successfully!");
+      }
+      
+      // কাজ শেষে ফর্ম ফাঁকা করে দেওয়া
       setNewProduct({ title: '', price: '', category: 'Physics', writer: '', description: '', demoLink: '', mainLink: '', isFree: false });
-      fetchData();
+      fetchData(); // নতুন ডেটা লোড করা
     } catch (error) {
-      showToast("Error adding product", 'error');
+      showToast("Error saving product", 'error');
     }
   };
 
