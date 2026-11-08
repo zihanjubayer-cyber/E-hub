@@ -7,7 +7,7 @@ const Icons = {
   Lock: <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
 };
 
-export default function Navbar({ activeTab, setActiveTab, cartCount }) {
+export default function Navbar({ activeTab, setActiveTab, cartCount, user, handleLogout }) {
   return (
     <nav className="bg-white shadow-sm p-4 sticky top-0 z-40 border-b border-gray-100">
       <div className="max-w-5xl mx-auto flex justify-between items-center">
@@ -25,6 +25,18 @@ export default function Navbar({ activeTab, setActiveTab, cartCount }) {
             {Icons.Cart} <span className="hidden md:inline">Cart</span>
             {cartCount > 0 && <span className="ml-1 bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{cartCount}</span>}
           </button>
+          
+          {/* স্টুডেন্ট লগইন / লগআউট বাটন ঠিক এখানে যুক্ত করা হলো */}
+          {user ? (
+            <button onClick={handleLogout} className="px-3 py-1.5 rounded-lg font-bold text-sm bg-red-50 text-red-600 hover:bg-red-100 transition">
+              Logout
+            </button>
+          ) : (
+            <button onClick={() => setActiveTab('auth')} className={`px-3 py-1.5 rounded-lg font-bold text-sm transition ${activeTab === 'auth' ? 'bg-emerald-600 text-white' : 'bg-gray-900 text-white hover:bg-gray-800'}`}>
+              Login
+            </button>
+          )}
+
           <div className="h-6 w-px bg-gray-200 mx-1"></div>
           <button onClick={() => setActiveTab('admin')} className={`p-2 rounded-lg transition ${activeTab === 'admin' ? 'bg-gray-800 text-white' : 'text-gray-400 hover:bg-gray-100'}`}>
             {Icons.Lock}
