@@ -10,7 +10,7 @@ import Store from './pages/Store';
 import Cart from './pages/Cart';
 import Library from './pages/Library';
 import Admin from './pages/Admin';
-import PdfViewer from './components/PdfViewer'; // পিডিএফ ভিউয়ার ইমপোর্ট করা হলো
+import PdfViewer from './components/PdfViewer';
 
 function App() {
   const [activeTab, setActiveTab] = useState('store'); 
@@ -39,12 +39,11 @@ function App() {
   const [newCoupon, setNewCoupon] = useState({ code: '', discount: '' });
   const [newPaymentNumber, setNewPaymentNumber] = useState('');
 
-  // পিডিএফ ভিউয়ারের মেইন কন্ট্রোলার (স্টেট)
+  // Global PDF Viewer State
   const [viewerOpen, setViewerOpen] = useState(false);
   const [currentPdfUrl, setCurrentPdfUrl] = useState('');
   const [currentTitle, setCurrentTitle] = useState('');
 
-  // পিডিএফ ওপেন করার গ্লোবাল ফাংশন
   const openPdf = (url, title) => {
     setCurrentPdfUrl(url);
     setCurrentTitle(title);
@@ -228,7 +227,7 @@ function App() {
             loading={loading} filteredProducts={filteredProducts} 
             cart={cart} setCart={setCart} library={library} 
             handleGetFree={handleGetFree} showToast={showToast} 
-            openPdf={openPdf} // Store-এ পিডিএফ ওপেন করার পাওয়ার দেওয়া হলো
+            openPdf={openPdf}
           />
         )}
 
@@ -243,10 +242,7 @@ function App() {
         )}
 
         {activeTab === 'library' && (
-          <Library 
-            library={library} 
-            openPdf={openPdf} // Library-তে পিডিএফ ওপেন করার পাওয়ার দেওয়া হলো
-          />
+          <Library library={library} openPdf={openPdf} />
         )}
 
         {activeTab === 'admin' && (
@@ -263,8 +259,7 @@ function App() {
       </main>
 
       <Footer />
-      
-      {/* গ্লোবাল পিডিএফ ভিউয়ার (সবার জন্য একটাই) */}
+
       <PdfViewer 
         isOpen={viewerOpen} 
         onClose={() => setViewerOpen(false)} 
