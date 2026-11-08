@@ -3,7 +3,6 @@ import React from 'react';
 export default function PdfViewer({ isOpen, onClose, pdfUrl, title }) {
   if (!isOpen) return null;
 
-  // গুগল ড্রাইভের সাধারণ লিংককে ওয়েবসাইটের ভেতরে দেখানোর (Preview) লিংকে রূপান্তর করার ম্যাজিক ট্রিক
   const getEmbedUrl = (url) => {
     if (!url) return '';
     if (url.includes('drive.google.com')) {
@@ -14,13 +13,10 @@ export default function PdfViewer({ isOpen, onClose, pdfUrl, title }) {
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-gray-900 animate-fade-in">
-      
-      {/* Top Navbar for Viewer */}
       <div className="bg-gray-800 text-white p-4 flex justify-between items-center shadow-lg">
         <h3 className="font-bold text-lg md:text-xl truncate max-w-[50%] text-emerald-400">
           📄 {title || 'Document Viewer'}
         </h3>
-        
         <div className="flex gap-3">
           <a 
             href={pdfUrl} 
@@ -42,11 +38,7 @@ export default function PdfViewer({ isOpen, onClose, pdfUrl, title }) {
         </div>
       </div>
       
-      {/* PDF Iframe Display */}
       <div className="flex-grow w-full h-full bg-gray-100 relative">
-        <div className="absolute inset-0 flex items-center justify-center -z-10">
-           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
-        </div>
         <iframe 
           src={getEmbedUrl(pdfUrl)} 
           title={title}
@@ -54,7 +46,6 @@ export default function PdfViewer({ isOpen, onClose, pdfUrl, title }) {
           allow="autoplay"
         ></iframe>
       </div>
-      
     </div>
   );
 }
