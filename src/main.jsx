@@ -7,19 +7,18 @@ import { auth, db } from './config/firebase';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import Store from './pages/Store';
-import Cart from './pages/Cart';
+import Checkout from './pages/Checkout'; // Cart এর বদলে Checkout
 import Library from './pages/Library';
 import Admin from './pages/Admin';
 import Auth from './pages/Auth'; 
 import PdfViewer from './components/PdfViewer';
 
-// 🛑 এখানে তোমার অ্যাডমিন ইমেইলগুলো দেওয়া আছে 
 const ADMIN_EMAILS = ['zihanjubayer@gmail.com', 'talhajubayer312@gmail.com']; 
 
 function App() {
   const [activeTab, setActiveTab] = useState('store'); 
   const [products, setProducts] = useState([]);
-  const [cart, setCart] = useState([]);
+  const [checkoutItem, setCheckoutItem] = useState(null); // কার্টের বদলে এখন Single Item
   const [library, setLibrary] = useState([]); 
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
@@ -47,18 +46,14 @@ function App() {
   const [currentPdfUrl, setCurrentPdfUrl] = useState('');
   const [currentTitle, setCurrentTitle] = useState('');
 
-  // লগইন করা ইউজার কি অ্যাডমিন? (True / False)
   const isAdmin = user && ADMIN_EMAILS.includes(user.email);
 
   const openPdf = (url, title) => {
-    setCurrentPdfUrl(url);
-    setCurrentTitle(title);
-    setViewerOpen(true);
+    setCurrentPdfUrl(url); setCurrentTitle(title); setViewerOpen(true);
   };
 
   const showToast = (message, type = 'success') => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
+    setToast({ message, type }); setTimeout(() => setToast(null), 3000);
   };
 
   const fetchData = async () => {
@@ -72,19 +67,24 @@ function App() {
 
       const couponSnap = await getDocs(collection(db, "coupons"));
       setCoupons(couponSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    } catch (error) {
-      console.error("Error fetching data:", error);
-    }
+    } catch (error) {}
     setLoading(false);
   };
 
   useEffect(() => {
     fetchData();
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
-      // শুধুমাত্র অ্যাডমিন লগইন করলেই অর্ডার ফেচ হবে (সিকিউরিটি)
-      if (currentUser && ADMIN_EMAILS.includes(currentUser.email)) {
-        fetchOrders();
+      if (currentUser) {
+        if (ADMIN_EMAILS.includes(currentUser.email)) {
+          fetchOrders();
+        } else {
+          const userDoc = await getDoc(doc(db, "users", currentUser.uid));
+          if (userDoc.exists()) setLibrary(userDoc.data().library || []);
+          else setLibrary([]);
+        }
+      } else {
+        setLibrary([]);
       }
     });
     return () => unsubscribe();
@@ -99,23 +99,16 @@ function App() {
     e.preventDefault();
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      // অ্যাডমিন লগইন ফর্ম থেকে লগইন করলে চেক করবে ইমেইলটা অ্যাডমিন কি না
       if (ADMIN_EMAILS.includes(userCredential.user.email)) {
-        showToast('Successfully logged in as Admin!');
-        setActiveTab('admin');
+        showToast('Successfully logged in as Admin!'); setActiveTab('admin');
       } else {
-        showToast('Access Denied! You are not an Admin.', 'error');
-        signOut(auth); // অ্যাডমিন না হলে সাথে সাথে বের করে দেবে
+        showToast('Access Denied! You are not an Admin.', 'error'); signOut(auth);
       }
-    } catch (error) {
-      showToast('Login failed!', 'error');
-    }
+    } catch (error) { showToast('Login failed!', 'error'); }
   };
 
   const handleLogout = () => {
-    signOut(auth);
-    showToast('Logged out');
-    setActiveTab('store');
+    signOut(auth); showToast('Logged out'); setActiveTab('store');
   };
 
   const handleAddProduct = async (e) => {
@@ -123,100 +116,100 @@ function App() {
     try {
       if (newProduct.id) {
         await updateDoc(doc(db, "products", newProduct.id), {
-          title: newProduct.title, category: newProduct.category, writer: newProduct.writer,
-          description: newProduct.description, demoLink: newProduct.demoLink, mainLink: newProduct.mainLink,
-          isFree: newProduct.isFree, price: newProduct.isFree ? 0 : Number(newProduct.price)
+          title: newProduct.title, category: newProduct.category, writer: newProduct.writer, description: newProduct.description, demoLink: newProduct.demoLink, mainLink: newProduct.mainLink, isFree: newProduct.isFree, price: newProduct.isFree ? 0 : Number(newProduct.price)
         });
-        showToast("Product updated successfully!");
+        showToast("Product updated!");
       } else {
-        await addDoc(collection(db, "products"), {
-          ...newProduct, price: newProduct.isFree ? 0 : Number(newProduct.price)
-        });
-        showToast("Product added successfully!");
+        await addDoc(collection(db, "products"), { ...newProduct, price: newProduct.isFree ? 0 : Number(newProduct.price) });
+        showToast("Product added!");
       }
       setNewProduct({ title: '', price: '', category: 'Physics', writer: '', description: '', demoLink: '', mainLink: '', isFree: false });
       fetchData();
-    } catch (error) {
-      showToast("Error saving product", 'error');
-    }
+    } catch (error) {}
   };
 
   const handleDeleteProduct = async (id) => {
-    if(window.confirm("Are you sure you want to delete this note?")) {
-      await deleteDoc(doc(db, "products", id));
-      showToast("Product deleted!");
-      fetchData();
+    if(window.confirm("Delete this note?")) {
+      await deleteDoc(doc(db, "products", id)); showToast("Deleted!"); fetchData();
     }
-  };
-
-  const removeFromCart = (id) => {
-    setCart(cart.filter(item => item.id !== id));
-    showToast("Item removed from cart");
   };
 
   const handleSaveSettings = async (e) => {
     e.preventDefault();
     await setDoc(doc(db, "settings", "store"), { paymentNumber: newPaymentNumber });
-    setStoreSettings({ paymentNumber: newPaymentNumber });
-    showToast("Payment number updated!");
+    setStoreSettings({ paymentNumber: newPaymentNumber }); showToast("Payment number updated!");
   };
 
   const handleAddCoupon = async (e) => {
     e.preventDefault();
-    await addDoc(collection(db, "coupons"), {
-      code: newCoupon.code.toUpperCase(), discount: Number(newCoupon.discount)
-    });
-    showToast("Coupon added!");
-    setNewCoupon({ code: '', discount: '' });
-    fetchData();
+    await addDoc(collection(db, "coupons"), { code: newCoupon.code.toUpperCase(), discount: Number(newCoupon.discount) });
+    showToast("Coupon added!"); setNewCoupon({ code: '', discount: '' }); fetchData();
   };
 
   const applyCoupon = () => {
     const validCoupon = coupons.find(c => c.code === couponInput.toUpperCase());
-    if (validCoupon) {
-      setAppliedCoupon(validCoupon);
-      showToast(`Coupon applied! ${validCoupon.discount}% off.`);
-    } else {
-      showToast("Invalid coupon code!", 'error');
-      setAppliedCoupon(null);
-    }
+    if (validCoupon) { setAppliedCoupon(validCoupon); showToast(`Coupon applied!`); } 
+    else { showToast("Invalid coupon!", 'error'); setAppliedCoupon(null); }
   };
 
-  const cartTotal = cart.reduce((sum, item) => sum + item.price, 0);
-  const finalTotal = appliedCoupon ? cartTotal - (cartTotal * (appliedCoupon.discount / 100)) : cartTotal;
+  // Buy Now বাটনের লজিক (Security Check)
+  const handleBuyNow = (product) => {
+    if (!user) {
+      showToast('Please login or create an account to purchase notes!', 'error');
+      setActiveTab('auth');
+      return;
+    }
+    setCheckoutItem(product);
+    setActiveTab('checkout');
+  };
 
+  // Checkout অর্ডার প্লেস করা
   const handleCheckout = async (e) => {
     e.preventDefault();
     const phone = e.target.phone.value;
     const trxId = e.target.trxId.value;
+    const finalTotal = appliedCoupon ? checkoutItem.price - (checkoutItem.price * (appliedCoupon.discount / 100)) : checkoutItem.price;
+
     try {
       await addDoc(collection(db, "orders"), {
-        phone, trxId, items: cart, totalPaid: finalTotal, status: 'Pending', timestamp: new Date().toISOString()
+        userId: user.uid,
+        phone, trxId,
+        product: checkoutItem, // সিঙ্গেল প্রডাক্ট সেভ হচ্ছে
+        totalPaid: finalTotal, status: 'Pending', timestamp: new Date().toISOString()
       });
-      showToast('Order submitted! Wait for admin approval.');
-      setCart([]); setAppliedCoupon(null); setActiveTab('library');
-    } catch (error) {
-      showToast('Error submitting order', 'error');
-    }
+      showToast('Order submitted successfully! Wait for admin approval.');
+      setCheckoutItem(null); setAppliedCoupon(null); setActiveTab('library');
+    } catch (error) { showToast('Error submitting order', 'error'); }
   };
 
-  const handleGetFree = (product) => {
+  const handleGetFree = async (product) => {
+    if (!user) { showToast('Please login first!', 'error'); setActiveTab('auth'); return; }
     if(!library.find(item => item.id === product.id)) {
-      setLibrary([...library, product]);
-      showToast('Free note added to your library!');
+      const newLibrary = [...library, product];
+      setLibrary(newLibrary);
+      await setDoc(doc(db, "users", user.uid), { library: newLibrary }, { merge: true });
+      showToast('Free note added to your library forever!');
     }
   };
 
-  const handleApproveOrder = async (orderId, orderItems) => {
+  // অ্যাডমিন অ্যাপ্রুভ করার সাথে সাথে অটোমেটিক লাইব্রেরিতে পাঠানো (Magic Step 4)
+  const handleApproveOrder = async (orderId, orderProduct, orderUserId) => {
     try {
       await updateDoc(doc(db, "orders", orderId), { status: 'Approved' });
-      showToast('Order Approved!');
+      
+      if (orderUserId && orderProduct) {
+        const userRef = doc(db, "users", orderUserId);
+        const userSnap = await getDoc(userRef);
+        let currentLib = userSnap.exists() ? (userSnap.data().library || []) : [];
+        
+        if (!currentLib.find(l => l.id === orderProduct.id)) {
+          const updatedLib = [...currentLib, orderProduct];
+          await setDoc(userRef, { library: updatedLib }, { merge: true });
+        }
+      }
+      showToast('Order Approved & Material sent to student Library!');
       fetchOrders();
-      const newItems = orderItems.filter(item => !library.find(l => l.id === item.id));
-      setLibrary([...library, ...newItems]);
-    } catch (error) {
-      showToast('Error approving order', 'error');
-    }
+    } catch (error) { showToast('Error approving order', 'error'); }
   };
 
   const filteredProducts = products.filter(p => 
@@ -232,32 +225,24 @@ function App() {
         </div>
       )}
 
-      <Navbar activeTab={activeTab} setActiveTab={setActiveTab} cartCount={cart.length} user={user} handleLogout={handleLogout} />
+      <Navbar activeTab={activeTab} setActiveTab={setActiveTab} user={user} handleLogout={handleLogout} />
 
       <main className="flex-grow max-w-5xl mx-auto p-4 md:p-6 w-full mb-10">
         
         {activeTab === 'store' && (
-          <Store searchTerm={searchTerm} setSearchTerm={setSearchTerm} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} loading={loading} filteredProducts={filteredProducts} cart={cart} setCart={setCart} library={library} handleGetFree={handleGetFree} showToast={showToast} openPdf={openPdf} />
+          <Store searchTerm={searchTerm} setSearchTerm={setSearchTerm} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} loading={loading} filteredProducts={filteredProducts} library={library} handleGetFree={handleGetFree} handleBuyNow={handleBuyNow} showToast={showToast} openPdf={openPdf} />
         )}
 
-        {activeTab === 'cart' && (
-          <Cart cart={cart} removeFromCart={removeFromCart} setActiveTab={setActiveTab} couponInput={couponInput} setCouponInput={setCouponInput} applyCoupon={applyCoupon} appliedCoupon={appliedCoupon} cartTotal={cartTotal} finalTotal={finalTotal} storeSettings={storeSettings} handleCheckout={handleCheckout} />
+        {activeTab === 'checkout' && (
+          <Checkout checkoutItem={checkoutItem} setActiveTab={setActiveTab} couponInput={couponInput} setCouponInput={setCouponInput} applyCoupon={applyCoupon} appliedCoupon={appliedCoupon} storeSettings={storeSettings} handleCheckout={handleCheckout} />
         )}
 
         {activeTab === 'library' && (
           <Library library={library} openPdf={openPdf} />
         )}
 
-        {/* 🛑 অ্যাডমিন প্যানেলে isAdmin প্রপস পাঠানো হলো */}
         {activeTab === 'admin' && (
-          <Admin 
-            isAdmin={isAdmin} user={user} handleLogout={handleLogout} handleLogin={handleLogin} 
-            email={email} setEmail={setEmail} password={password} setPassword={setPassword} 
-            handleSaveSettings={handleSaveSettings} newPaymentNumber={newPaymentNumber} setNewPaymentNumber={setNewPaymentNumber} 
-            storeSettings={storeSettings} handleAddCoupon={handleAddCoupon} newCoupon={newCoupon} setNewCoupon={setNewCoupon} 
-            handleAddProduct={handleAddProduct} newProduct={newProduct} setNewProduct={setNewProduct} 
-            orders={orders} handleApproveOrder={handleApproveOrder} products={products} handleDeleteProduct={handleDeleteProduct} 
-          />
+          <Admin isAdmin={isAdmin} user={user} handleLogout={handleLogout} handleLogin={handleLogin} email={email} setEmail={setEmail} password={password} setPassword={setPassword} handleSaveSettings={handleSaveSettings} newPaymentNumber={newPaymentNumber} setNewPaymentNumber={setNewPaymentNumber} storeSettings={storeSettings} handleAddCoupon={handleAddCoupon} newCoupon={newCoupon} setNewCoupon={setNewCoupon} handleAddProduct={handleAddProduct} newProduct={newProduct} setNewProduct={setNewProduct} orders={orders} handleApproveOrder={handleApproveOrder} products={products} handleDeleteProduct={handleDeleteProduct} />
         )}
 
         {activeTab === 'auth' && (
@@ -272,6 +257,4 @@ function App() {
 }
 
 const rootElement = document.getElementById('root');
-if (rootElement) {
-  createRoot(rootElement).render(<App />);
-}
+if (rootElement) { createRoot(rootElement).render(<App />); }
