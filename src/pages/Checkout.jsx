@@ -1,8 +1,19 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 export default function Checkout({
   checkoutItem, setActiveTab, couponInput, setCouponInput, applyCoupon, appliedCoupon, storeSettings, handleCheckout
 }) {
+  const [copied, setCopied] = useState(false);
+
+  // নাম্বার কপি করার ফাংশন
+  const handleCopyNumber = () => {
+    if (storeSettings?.paymentNumber) {
+      navigator.clipboard.writeText(storeSettings.paymentNumber);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000); // ২ সেকেন্ড পর আবার আগের অবস্থায় ফিরে যাবে
+    }
+  };
+
   if (!checkoutItem) {
     return (
       <div className="text-center py-20 animate-fade-in bg-white rounded-3xl shadow-sm border border-gray-100 max-w-lg mx-auto mt-10">
@@ -44,11 +55,19 @@ export default function Checkout({
         <div className="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-gray-100">
            <h3 className="font-extrabold text-2xl mb-4 text-gray-900">Payment & Verification</h3>
            
-           {/* 🛑 নতুন বাংলায় লেখা ইনস্ট্রাকশন বক্স */}
            <div className="bg-emerald-50 border border-emerald-100 p-5 rounded-2xl mb-8 text-emerald-900 text-sm leading-relaxed shadow-inner">
               <p className="font-extrabold mb-3 text-base border-b border-emerald-200 pb-2">কীভাবে পেমেন্ট করবেন?</p>
               <ul className="space-y-3 font-medium">
-                 <li>১. আপনার বিকাশ বা নগদ থেকে <b className="text-lg bg-emerald-200 px-2 py-0.5 rounded tracking-wider shadow-sm">{storeSettings?.paymentNumber}</b> নাম্বারে ঠিক <b className="text-lg text-emerald-700">৳{finalTotal}</b> 'Send Money' করুন।</li>
+                 <li className="leading-loose">
+                   ১. আপনার বিকাশ বা নগদ থেকে 
+                   <span className="inline-flex items-center mx-2 bg-emerald-200 pl-3 pr-1 py-1 rounded-lg shadow-sm border border-emerald-300">
+                     <b className="text-lg tracking-wider mr-2">{storeSettings?.paymentNumber}</b>
+                     <button onClick={handleCopyNumber} className="bg-white hover:bg-emerald-50 px-2 py-1 rounded text-xs font-bold transition flex items-center gap-1 text-emerald-700" title="Copy Number">
+                       {copied ? '✅ Copied!' : '📋 Copy'}
+                     </button>
+                   </span>
+                   নাম্বারে ঠিক <b className="text-lg text-emerald-700">৳{finalTotal}</b> 'Send Money' করুন।
+                 </li>
                  <li>২. টাকা পাঠানো হয়ে গেলে, যে নাম্বার থেকে টাকা পাঠিয়েছেন সেটি এবং Transaction ID (TrxID) নিচের বক্সে দিয়ে ফর্মটি সাবমিট করুন।</li>
                  <li className="bg-white p-3 rounded-xl border border-emerald-100 text-emerald-800 text-xs font-bold flex gap-2 items-start mt-2">
                     <span className="text-lg">✨</span>
