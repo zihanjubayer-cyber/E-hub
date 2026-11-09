@@ -7,10 +7,11 @@ export default function Store({
   loading, filteredProducts, library, 
   handleGetFree, handleBuyNow, openPdf 
 }) {
+  // 🛑 ক্যাটাগরিগুলো I, II স্টাইলে আপডেট করা হলো
   const categories = [
-    'All', 'Physics 1st Paper', 'Physics 2nd Paper', 
-    'Chemistry 1st Paper', 'Chemistry 2nd Paper', 
-    'Higher Math 1st Paper', 'Higher Math 2nd Paper', 
+    'All', 'Physics I', 'Physics II', 
+    'Chemistry I', 'Chemistry II', 
+    'Higher Math I', 'Higher Math II', 
     'Admission Special', 'Full Book Solution Bundle'
   ];
 
