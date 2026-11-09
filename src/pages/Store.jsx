@@ -7,7 +7,6 @@ export default function Store({
   loading, filteredProducts, library, 
   handleGetFree, handleBuyNow, openPdf 
 }) {
-  // 🛑 ক্যাটাগরিগুলো I, II স্টাইলে আপডেট করা হলো
   const categories = [
     'All', 'Physics I', 'Physics II', 
     'Chemistry I', 'Chemistry II', 
@@ -22,7 +21,7 @@ export default function Store({
         <p className="text-emerald-100 text-lg max-w-2xl mx-auto relative z-10">Top quality board standard materials by expert writers.</p>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-4 mb-8">
+      <div className="flex flex-col md:flex-row gap-4 mb-6">
         <div className="relative flex-1">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">{Icons.Search}</div>
           <input type="text" placeholder="Search for notes..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 outline-none shadow-sm transition" />
@@ -33,6 +32,22 @@ export default function Store({
               {cat}
             </button>
           ))}
+        </div>
+      </div>
+
+      {/* 🛑 6. Why Choose Us Section */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
+        <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-2xl flex items-center gap-3 shadow-sm">
+          <span className="text-3xl">📖</span>
+          <p className="font-bold text-emerald-900 text-sm leading-tight">100% Board Standard Correct Solutions</p>
+        </div>
+        <div className="bg-blue-50 border border-blue-100 p-4 rounded-2xl flex items-center gap-3 shadow-sm">
+          <span className="text-3xl">💻</span>
+          <p className="font-bold text-blue-900 text-sm leading-tight">Clear PDF: Mobile & PC Friendly</p>
+        </div>
+        <div className="bg-amber-50 border border-amber-100 p-4 rounded-2xl flex items-center gap-3 shadow-sm">
+          <span className="text-3xl">⚡</span>
+          <p className="font-bold text-amber-900 text-sm leading-tight">Instant Auto-Delivery to Library</p>
         </div>
       </div>
       
@@ -46,6 +61,7 @@ export default function Store({
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredProducts.map(product => {
             const inLibrary = library.some(item => item.id === product.id);
+            const hasStats = product.pages || product.size || product.target;
 
             return (
               <div key={product.id} className="bg-white p-6 rounded-2xl shadow-sm hover:shadow-xl border border-gray-100 transition-all duration-300 flex flex-col relative group transform hover:-translate-y-1">
@@ -55,8 +71,22 @@ export default function Store({
                 </div>
                 
                 <h3 className="font-extrabold text-2xl text-gray-800 leading-tight mb-2 z-10">{product.title}</h3>
-                {product.writer && <p className="text-teal-600 font-semibold text-sm mb-3 z-10 flex items-center gap-1">✍️ Writer: {product.writer}</p>}
-                <p className="text-gray-500 text-sm mb-8 flex-grow z-10 line-clamp-3 leading-relaxed">{product.description}</p>
+                
+                {product.writer && <p className="text-teal-600 font-semibold text-sm mb-1 z-10 flex items-center gap-1">✍️ Writer: {product.writer}</p>}
+                
+                {/* 🛑 Edition Tag */}
+                {product.edition && <p className="text-blue-700 font-bold text-xs mb-4 z-10 flex items-center gap-1 bg-blue-50 w-fit px-2 py-1 rounded border border-blue-100">📅 Edition: {product.edition}</p>}
+                
+                <p className="text-gray-500 text-sm mb-4 flex-grow z-10 line-clamp-3 leading-relaxed">{product.description}</p>
+                
+                {/* 🛑 Quick Stats Grid */}
+                {hasStats && (
+                  <div className="grid grid-cols-3 gap-2 mb-6 bg-gray-50 p-3 rounded-xl border border-gray-200 z-10">
+                    {product.pages ? <div className="text-center"><p className="text-[10px] text-gray-500 font-bold uppercase">Pages</p><p className="font-black text-gray-800 text-sm">📄 {product.pages}</p></div> : <div></div>}
+                    {product.size ? <div className="text-center border-l border-r border-gray-200"><p className="text-[10px] text-gray-500 font-bold uppercase">Size</p><p className="font-black text-gray-800 text-sm">💾 {product.size}</p></div> : <div></div>}
+                    {product.target ? <div className="text-center"><p className="text-[10px] text-gray-500 font-bold uppercase">Target</p><p className="font-black text-gray-800 text-sm">🎯 {product.target}</p></div> : <div></div>}
+                  </div>
+                )}
                 
                 <div className="space-y-3 mt-auto z-10">
                   {product.demoLink && (
