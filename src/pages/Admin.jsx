@@ -5,11 +5,15 @@ const Icons = { Lock: <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5
 export default function Admin({
   user, isAdmin, handleLogout, handleLogin, email, setEmail, password, setPassword,
   handleSaveSettings, newBkash, setNewBkash, newNagad, setNewNagad, storeSettings,
-  handleAddCoupon, newCoupon, setNewCoupon, coupons, handleDeleteCoupon, // 🛑 কুপন প্রপস
+  handleAddCoupon, newCoupon, setNewCoupon, coupons, handleDeleteCoupon,
   handleAddProduct, newProduct, setNewProduct,
   orders, handleApproveOrder, handleDeleteOrder, products, handleDeleteProduct
 }) {
   const [selectedOrder, setSelectedOrder] = useState(null); 
+  // 🛑 Custom Confirmation States
+  const [deleteOrderConfirm, setDeleteOrderConfirm] = useState(null);
+  const [deleteCouponConfirm, setDeleteCouponConfirm] = useState(null);
+  const [deleteProductConfirm, setDeleteProductConfirm] = useState(null);
 
   const categories = [
     'Physics I', 'Physics II', 
@@ -17,6 +21,22 @@ export default function Admin({
     'Higher Math I', 'Higher Math II', 
     'Admission Special', 'Full Book Solution Bundle'
   ];
+
+  const handleConfirmDeleteOrder = () => {
+    handleDeleteOrder(deleteOrderConfirm);
+    setDeleteOrderConfirm(null);
+  }
+
+  const handleConfirmDeleteCoupon = () => {
+    handleDeleteCoupon(deleteCouponConfirm);
+    setDeleteCouponConfirm(null);
+  }
+
+  const handleConfirmDeleteProduct = () => {
+    handleDeleteProduct(deleteProductConfirm);
+    setDeleteProductConfirm(null);
+  }
+
 
   return (
     <div className="bg-white p-6 md:p-10 rounded-3xl shadow-lg border border-gray-100 max-w-4xl mx-auto animate-fade-in relative overflow-hidden">
@@ -35,10 +55,61 @@ export default function Admin({
             </div>
             <div className="flex gap-3">
               <button onClick={() => { handleApproveOrder(selectedOrder.id, selectedOrder.product, selectedOrder.userId); setSelectedOrder(null); }} className="flex-1 bg-emerald-600 text-white py-3 rounded-xl font-bold hover:bg-emerald-700 transition">Confirm Approve</button>
-              <button onClick={() => { handleDeleteOrder(selectedOrder.id); setSelectedOrder(null); }} className="flex-1 bg-red-100 text-red-600 py-3 rounded-xl font-bold hover:bg-red-200 transition">Reject & Delete</button>
+              <button onClick={() => { setDeleteOrderConfirm(selectedOrder.id); setSelectedOrder(null); }} className="flex-1 bg-red-100 text-red-600 py-3 rounded-xl font-bold hover:bg-red-200 transition">Reject & Delete</button>
             </div>
             <button onClick={() => setSelectedOrder(null)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-800 font-bold text-xl">&times;</button>
           </div>
+        </div>
+      )}
+
+      {/* 🛑 Delete Order Confirmation Modal */}
+      {deleteOrderConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 p-4 animate-fade-in">
+           <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-sm w-full relative text-center">
+             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+               <span className="text-red-500 text-2xl font-bold">!</span>
+             </div>
+             <h3 className="font-black text-xl mb-2 text-gray-900">Delete Order Record?</h3>
+             <p className="text-gray-500 mb-6 text-sm">Are you sure you want to permanently delete this order record? This action cannot be undone.</p>
+             <div className="flex gap-3">
+               <button onClick={() => setDeleteOrderConfirm(null)} className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-200 transition">Cancel</button>
+               <button onClick={handleConfirmDeleteOrder} className="flex-1 bg-red-500 text-white py-3 rounded-xl font-bold hover:bg-red-600 transition">Delete</button>
+             </div>
+           </div>
+        </div>
+      )}
+
+      {/* 🛑 Delete Coupon Confirmation Modal */}
+      {deleteCouponConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 p-4 animate-fade-in">
+           <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-sm w-full relative text-center">
+             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+               <span className="text-red-500 text-2xl font-bold">!</span>
+             </div>
+             <h3 className="font-black text-xl mb-2 text-gray-900">Remove Coupon?</h3>
+             <p className="text-gray-500 mb-6 text-sm">Are you sure you want to remove this coupon?</p>
+             <div className="flex gap-3">
+               <button onClick={() => setDeleteCouponConfirm(null)} className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-200 transition">Cancel</button>
+               <button onClick={handleConfirmDeleteCoupon} className="flex-1 bg-red-500 text-white py-3 rounded-xl font-bold hover:bg-red-600 transition">Remove</button>
+             </div>
+           </div>
+        </div>
+      )}
+
+      {/* 🛑 Delete Product Confirmation Modal */}
+      {deleteProductConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 p-4 animate-fade-in">
+           <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-sm w-full relative text-center">
+             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+               <span className="text-red-500 text-2xl font-bold">!</span>
+             </div>
+             <h3 className="font-black text-xl mb-2 text-gray-900">Delete Note?</h3>
+             <p className="text-gray-500 mb-6 text-sm">Are you sure you want to permanently delete this note?</p>
+             <div className="flex gap-3">
+               <button onClick={() => setDeleteProductConfirm(null)} className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-200 transition">Cancel</button>
+               <button onClick={handleConfirmDeleteProduct} className="flex-1 bg-red-500 text-white py-3 rounded-xl font-bold hover:bg-red-600 transition">Delete</button>
+             </div>
+           </div>
         </div>
       )}
 
@@ -83,8 +154,7 @@ export default function Admin({
                 <button type="submit" className="bg-emerald-600 text-white px-4 py-3 rounded-xl font-bold w-1/4 hover:bg-emerald-700 transition">+</button>
               </form>
               
-              {/* 🛑 অ্যাক্টিভ কুপন লিস্ট */}
-              {coupons.length > 0 && (
+              {coupons && coupons.length > 0 && (
                 <div className="mt-4 space-y-2 border-t border-emerald-200 pt-4">
                   <p className="text-xs font-bold text-emerald-700 uppercase tracking-wider mb-2">Active Coupons</p>
                   {coupons.map(c => (
@@ -93,7 +163,7 @@ export default function Admin({
                         <p className="font-black text-gray-800 tracking-widest">{c.code}</p>
                         <p className="text-xs font-bold text-emerald-600">{c.discount}% OFF</p>
                       </div>
-                      <button onClick={() => handleDeleteCoupon(c.id)} className="text-red-500 bg-red-50 px-3 py-1 rounded-lg text-xs font-bold hover:bg-red-100 transition">Delete</button>
+                      <button onClick={() => setDeleteCouponConfirm(c.id)} className="text-red-500 bg-red-50 px-3 py-1 rounded-lg text-xs font-bold hover:bg-red-100 transition">Delete</button>
                     </div>
                   ))}
                 </div>
@@ -173,7 +243,7 @@ export default function Admin({
                           {order.status === 'Pending' ? (
                             <button onClick={() => setSelectedOrder(order)} className="bg-blue-600 text-white px-5 py-2 text-sm rounded-lg hover:bg-blue-700 font-bold shadow-sm transition">Verify Order</button>
                           ) : (
-                            <button onClick={() => handleDeleteOrder(order.id)} className="bg-red-50 text-red-500 px-4 py-2 text-xs rounded-lg hover:bg-red-100 font-bold transition">Delete History</button>
+                            <button onClick={() => setDeleteOrderConfirm(order.id)} className="bg-red-50 text-red-500 px-4 py-2 text-xs rounded-lg hover:bg-red-100 font-bold transition">Delete History</button>
                           )}
                         </td>
                       </tr>
@@ -195,7 +265,7 @@ export default function Admin({
                    </div>
                    <div className="flex gap-2">
                      <button onClick={() => { setNewProduct(p); document.getElementById('product-form').scrollIntoView({ behavior: 'smooth' }); }} className="bg-blue-50 text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-100 font-bold transition">Edit</button>
-                     <button onClick={() => handleDeleteProduct(p.id)} className="bg-red-50 text-red-500 px-4 py-2 rounded-lg hover:bg-red-100 font-bold transition">Delete</button>
+                     <button onClick={() => setDeleteProductConfirm(p.id)} className="bg-red-50 text-red-500 px-4 py-2 rounded-lg hover:bg-red-100 font-bold transition">Delete</button>
                    </div>
                  </div>
                ))}
