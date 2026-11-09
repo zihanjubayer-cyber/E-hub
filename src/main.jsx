@@ -26,7 +26,6 @@ function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
 
-  // বিকাশ ও নগদ আলাদা নম্বর ম্যানেজমেন্ট
   const [storeSettings, setStoreSettings] = useState({ bkashNumber: '01XXXXXXXXX', nagadNumber: '01XXXXXXXXX' });
   const [coupons, setCoupons] = useState([]);
   const [appliedCoupon, setAppliedCoupon] = useState(null);
@@ -37,13 +36,12 @@ function App() {
   const [password, setPassword] = useState('');
   const [orders, setOrders] = useState([]);
   
-  // প্রোডাক্টে serial ফিল্ড এবং নতুন ক্যাটাগরি ডিফল্ট করা হলো
+  // ক্যাটাগরি Physics I করে দেওয়া হলো
   const [newProduct, setNewProduct] = useState({ 
-    serial: 1, title: '', price: '', category: 'Physics 1st Paper', writer: '', description: '', demoLink: '', mainLink: '', isFree: false 
+    serial: 1, title: '', price: '', category: 'Physics I', writer: '', description: '', demoLink: '', mainLink: '', isFree: false 
   });
   const [newCoupon, setNewCoupon] = useState({ code: '', discount: '' });
   
-  // সেটিংসের জন্য আলাদা স্টেট
   const [newBkash, setNewBkash] = useState('');
   const [newNagad, setNewNagad] = useState('');
 
@@ -60,9 +58,11 @@ function App() {
     setLoading(true);
     try {
       const prodSnap = await getDocs(collection(db, "products"));
-      // সিরিয়াল নম্বর অনুযায়ী নোটগুলো সর্ট (সাজানো) করা হচ্ছে
       const fetchedProducts = prodSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      fetchedProducts.sort((a, b) => (a.serial || 0) - (b.serial || 0));
+      
+      // 🛑 ম্যাজিক সর্টিং: সিরিয়াল না থাকলে সেটিকে 9999 ধরে নিচে পাঠিয়ে দেওয়া হবে
+      fetchedProducts.sort((a, b) => (Number(a.serial) || 9999) - (Number(b.serial) || 9999));
+      
       setProducts(fetchedProducts);
       
       const settingsDoc = await getDoc(doc(db, "settings", "store"));
@@ -97,13 +97,12 @@ function App() {
 
   const fetchOrders = async () => {
     const querySnapshot = await getDocs(collection(db, "orders"));
-    // লেটেস্ট অর্ডার সবার উপরে দেখাতে টাইম অনুযায়ী সর্ট করা
     const fetchedOrders = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     fetchedOrders.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
     setOrders(fetchedOrders);
   };
 
-  const handleLogin = async (e) => { /* আগের মতোই আছে */
+  const handleLogin = async (e) => { 
     e.preventDefault();
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
@@ -118,7 +117,7 @@ function App() {
     try {
       const productData = {
         ...newProduct,
-        serial: Number(newProduct.serial),
+        serial: Number(newProduct.serial) || 9999, // ইনপুট না দিলে 9999 ধরে নেবে
         price: newProduct.isFree ? 0 : Number(newProduct.price)
       };
       
@@ -129,7 +128,7 @@ function App() {
         await addDoc(collection(db, "products"), productData);
         showToast("Product added!");
       }
-      setNewProduct({ serial: 1, title: '', price: '', category: 'Physics 1st Paper', writer: '', description: '', demoLink: '', mainLink: '', isFree: false });
+      setNewProduct({ serial: 1, title: '', price: '', category: 'Physics I', writer: '', description: '', demoLink: '', mainLink: '', isFree: false });
       fetchData();
     } catch (error) {}
   };
@@ -138,14 +137,13 @@ function App() {
     if(window.confirm("Delete this note?")) { await deleteDoc(doc(db, "products", id)); showToast("Deleted!"); fetchData(); }
   };
 
-  // বিকাশ ও নগদ নম্বর সেভ করা
   const handleSaveSettings = async (e) => {
     e.preventDefault();
     await setDoc(doc(db, "settings", "store"), { bkashNumber: newBkash, nagadNumber: newNagad });
     setStoreSettings({ bkashNumber: newBkash, nagadNumber: newNagad }); showToast("Payment numbers updated!");
   };
 
-  const handleAddCoupon = async (e) => { /* আগের মতোই */
+  const handleAddCoupon = async (e) => { 
     e.preventDefault(); await addDoc(collection(db, "coupons"), { code: newCoupon.code.toUpperCase(), discount: Number(newCoupon.discount) });
     showToast("Coupon added!"); setNewCoupon({ code: '', discount: '' }); fetchData();
   };
@@ -163,7 +161,7 @@ function App() {
     e.preventDefault();
     const phone = e.target.phone.value;
     const trxId = e.target.trxId.value;
-    const paymentMethod = e.target.paymentMethod.value; // বিকাশ নাকি নগদ
+    const paymentMethod = e.target.paymentMethod.value;
     const finalTotal = appliedCoupon ? checkoutItem.price - (checkoutItem.price * (appliedCoupon.discount / 100)) : checkoutItem.price;
 
     try {
@@ -176,7 +174,7 @@ function App() {
     } catch (error) { showToast('Error submitting order', 'error'); }
   };
 
-  const handleGetFree = async (product) => { /* আগের মতোই */
+  const handleGetFree = async (product) => { 
     if (!user) { showToast('Please login first!', 'error'); setActiveTab('auth'); return; }
     if(!library.find(item => item.id === product.id)) {
       const newLibrary = [...library, product];
@@ -201,7 +199,6 @@ function App() {
     } catch (error) { showToast('Error approving order', 'error'); }
   };
 
-  // যেকোনো অর্ডার (অ্যাপ্রুভড হিস্ট্রি বা ফেক ট্রানজাকশন) ডিলিট করা
   const handleDeleteOrder = async (orderId) => {
     if(window.confirm("Are you sure you want to permanently delete this order record?")) {
       try {
