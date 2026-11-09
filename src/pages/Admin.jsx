@@ -3,14 +3,14 @@ import React, { useState } from 'react';
 const Icons = { Lock: <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg> };
 
 export default function Admin({
-  user, isAdmin, pendingCount, // 🛑 ব্যাজ প্রপস
-  handleLogout, handleLogin, email, setEmail, password, setPassword,
+  user, isAdmin, handleLogout, handleLogin, email, setEmail, password, setPassword,
   handleSaveSettings, newBkash, setNewBkash, newNagad, setNewNagad, storeSettings,
   handleAddCoupon, newCoupon, setNewCoupon, coupons, handleDeleteCoupon,
   handleAddProduct, newProduct, setNewProduct,
   orders, handleApproveOrder, handleDeleteOrder, products, handleDeleteProduct
 }) {
   const [selectedOrder, setSelectedOrder] = useState(null); 
+  // 🛑 Custom Confirmation States
   const [deleteOrderConfirm, setDeleteOrderConfirm] = useState(null);
   const [deleteCouponConfirm, setDeleteCouponConfirm] = useState(null);
   const [deleteProductConfirm, setDeleteProductConfirm] = useState(null);
@@ -22,14 +22,25 @@ export default function Admin({
     'Admission Special', 'Full Book Solution Bundle'
   ];
 
-  const handleConfirmDeleteOrder = () => { handleDeleteOrder(deleteOrderConfirm); setDeleteOrderConfirm(null); }
-  const handleConfirmDeleteCoupon = () => { handleDeleteCoupon(deleteCouponConfirm); setDeleteCouponConfirm(null); }
-  const handleConfirmDeleteProduct = () => { handleDeleteProduct(deleteProductConfirm); setDeleteProductConfirm(null); }
+  const handleConfirmDeleteOrder = () => {
+    handleDeleteOrder(deleteOrderConfirm);
+    setDeleteOrderConfirm(null);
+  }
+
+  const handleConfirmDeleteCoupon = () => {
+    handleDeleteCoupon(deleteCouponConfirm);
+    setDeleteCouponConfirm(null);
+  }
+
+  const handleConfirmDeleteProduct = () => {
+    handleDeleteProduct(deleteProductConfirm);
+    setDeleteProductConfirm(null);
+  }
+
 
   return (
     <div className="bg-white p-6 md:p-10 rounded-3xl shadow-lg border border-gray-100 max-w-4xl mx-auto animate-fade-in relative overflow-hidden">
       
-      {/* 🛑 Verify Order Modal */}
       {selectedOrder && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 p-4 animate-fade-in">
           <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-md w-full relative">
@@ -51,13 +62,15 @@ export default function Admin({
         </div>
       )}
 
-      {/* 🛑 Delete Order Modal */}
+      {/* 🛑 Delete Order Confirmation Modal */}
       {deleteOrderConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 p-4 animate-fade-in">
            <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-sm w-full relative text-center">
-             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4"><span className="text-red-500 text-2xl font-bold">!</span></div>
+             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+               <span className="text-red-500 text-2xl font-bold">!</span>
+             </div>
              <h3 className="font-black text-xl mb-2 text-gray-900">Delete Order Record?</h3>
-             <p className="text-gray-500 mb-6 text-sm">Are you sure you want to permanently delete this order record?</p>
+             <p className="text-gray-500 mb-6 text-sm">Are you sure you want to permanently delete this order record? This action cannot be undone.</p>
              <div className="flex gap-3">
                <button onClick={() => setDeleteOrderConfirm(null)} className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-200 transition">Cancel</button>
                <button onClick={handleConfirmDeleteOrder} className="flex-1 bg-red-500 text-white py-3 rounded-xl font-bold hover:bg-red-600 transition">Delete</button>
@@ -66,11 +79,13 @@ export default function Admin({
         </div>
       )}
 
-      {/* 🛑 Delete Coupon Modal */}
+      {/* 🛑 Delete Coupon Confirmation Modal */}
       {deleteCouponConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 p-4 animate-fade-in">
            <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-sm w-full relative text-center">
-             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4"><span className="text-red-500 text-2xl font-bold">!</span></div>
+             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+               <span className="text-red-500 text-2xl font-bold">!</span>
+             </div>
              <h3 className="font-black text-xl mb-2 text-gray-900">Remove Coupon?</h3>
              <p className="text-gray-500 mb-6 text-sm">Are you sure you want to remove this coupon?</p>
              <div className="flex gap-3">
@@ -81,11 +96,13 @@ export default function Admin({
         </div>
       )}
 
-      {/* 🛑 Delete Product Modal */}
+      {/* 🛑 Delete Product Confirmation Modal */}
       {deleteProductConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 p-4 animate-fade-in">
            <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-sm w-full relative text-center">
-             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4"><span className="text-red-500 text-2xl font-bold">!</span></div>
+             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+               <span className="text-red-500 text-2xl font-bold">!</span>
+             </div>
              <h3 className="font-black text-xl mb-2 text-gray-900">Delete Note?</h3>
              <p className="text-gray-500 mb-6 text-sm">Are you sure you want to permanently delete this note?</p>
              <div className="flex gap-3">
@@ -191,15 +208,7 @@ export default function Admin({
           </div>
 
           <div>
-            <h3 className="font-extrabold text-2xl mb-6 text-gray-900 flex items-center gap-3">
-              📦 Recent Orders
-              {/* 🛑 নতুন পেন্ডিং অর্ডার আসলে এখানে লাফানো ব্যাজ দেখাবে */}
-              {pendingCount > 0 && (
-                <span className="bg-red-500 text-white text-xs px-3 py-1 rounded-full animate-pulse shadow-md">
-                  {pendingCount} New Pending
-                </span>
-              )}
-            </h3>
+            <h3 className="font-extrabold text-2xl mb-6 text-gray-900">📦 Recent Orders</h3>
             {orders.length === 0 ? (
               <div className="bg-gray-50 border border-dashed border-gray-300 rounded-2xl p-10 text-center text-gray-500">No orders pending.</div>
             ) : (
