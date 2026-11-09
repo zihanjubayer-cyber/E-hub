@@ -8,19 +8,19 @@ export default function Admin({
   handleAddCoupon, newCoupon, setNewCoupon, handleAddProduct, newProduct, setNewProduct,
   orders, handleApproveOrder, handleDeleteOrder, products, handleDeleteProduct
 }) {
-  const [selectedOrder, setSelectedOrder] = useState(null); // পপআপের জন্য স্টেট
+  const [selectedOrder, setSelectedOrder] = useState(null); 
 
+  // 🛑 ক্যাটাগরিগুলো I, II স্টাইলে আপডেট করা হলো
   const categories = [
-    'Physics 1st Paper', 'Physics 2nd Paper', 
-    'Chemistry 1st Paper', 'Chemistry 2nd Paper', 
-    'Higher Math 1st Paper', 'Higher Math 2nd Paper', 
+    'Physics I', 'Physics II', 
+    'Chemistry I', 'Chemistry II', 
+    'Higher Math I', 'Higher Math II', 
     'Admission Special', 'Full Book Solution Bundle'
   ];
 
   return (
     <div className="bg-white p-6 md:p-10 rounded-3xl shadow-lg border border-gray-100 max-w-4xl mx-auto animate-fade-in relative overflow-hidden">
       
-      {/* 🛑 Order Verification Popup (Modal) */}
       {selectedOrder && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 p-4 animate-fade-in">
           <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-md w-full relative">
@@ -65,7 +65,6 @@ export default function Admin({
       ) : (
         <div className="space-y-12">
           
-          {/* Store Setup - বিকাশ ও নগদ */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-gray-50 p-6 rounded-2xl border border-gray-200">
               <h3 className="font-bold text-lg mb-4 text-gray-800">Payment Numbers Setup</h3>
@@ -86,7 +85,6 @@ export default function Admin({
             </div>
           </div>
 
-          {/* Note Upload / Edit - সিরিয়াল নম্বর ও ক্যাটাগরি আপডেট */}
           <div id="product-form" className="bg-gradient-to-b from-white to-gray-50 p-6 md:p-8 rounded-2xl border border-gray-200 shadow-sm scroll-mt-24">
             <h3 className="font-extrabold text-2xl mb-6 text-gray-900">{newProduct.id ? '📝 Update Note' : '📝 Publish Note'}</h3>
             <form onSubmit={handleAddProduct} className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -118,12 +116,11 @@ export default function Admin({
               
               <div className="md:col-span-2 flex gap-3 mt-2">
                 <button type="submit" className="flex-1 bg-emerald-600 text-white py-4 rounded-xl font-extrabold text-lg hover:bg-emerald-700 shadow-md transition">{newProduct.id ? 'Update Note' : 'Publish Note'}</button>
-                {newProduct.id && <button type="button" onClick={() => setNewProduct({ serial: 1, title: '', price: '', category: 'Physics 1st Paper', writer: '', description: '', demoLink: '', mainLink: '', isFree: false })} className="bg-gray-300 text-gray-800 px-6 rounded-xl font-bold hover:bg-gray-400 transition">Cancel</button>}
+                {newProduct.id && <button type="button" onClick={() => setNewProduct({ serial: 1, title: '', price: '', category: 'Physics I', writer: '', description: '', demoLink: '', mainLink: '', isFree: false })} className="bg-gray-300 text-gray-800 px-6 rounded-xl font-bold hover:bg-gray-400 transition">Cancel</button>}
               </div>
             </form>
           </div>
 
-          {/* Orders Table - পপআপ কানেকশন ও ডিলিট হিস্ট্রি */}
           <div>
             <h3 className="font-extrabold text-2xl mb-6 text-gray-900">📦 Recent Orders</h3>
             {orders.length === 0 ? (
@@ -171,14 +168,14 @@ export default function Admin({
             )}
           </div>
 
-          {/* Uploaded Notes */}
           <div>
              <h3 className="font-extrabold text-2xl mb-6 text-gray-900">📚 Uploaded Notes</h3>
              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                {products.map(p => (
                  <div key={p.id} className="flex justify-between items-center bg-white border border-gray-200 p-5 rounded-2xl shadow-sm hover:border-gray-300 transition">
                    <div>
-                     <p className="font-bold text-gray-800 text-lg mb-1">{p.serial}. {p.title}</p>
+                     {/* 🛑 আগের নোটগুলোতে সিরিয়াল না থাকলে ? দেখাবে */}
+                     <p className="font-bold text-gray-800 text-lg mb-1">{p.serial === 9999 || !p.serial ? '?' : p.serial}. {p.title}</p>
                      <p className="text-sm font-black text-emerald-600">{p.isFree ? 'Free' : `৳${p.price}`} <span className="text-xs text-gray-400 font-normal ml-2">{p.category}</span></p>
                    </div>
                    <div className="flex gap-2">
