@@ -244,14 +244,14 @@ export default function Admin({
             )}
           </div>
 
-          {/* 🛑 Uploaded Notes - Chapter Wise Grouping */}
+          {/* Uploaded Notes - Chapter Wise Grouping */}
           <div>
              <h3 className="font-extrabold text-2xl mb-6 text-gray-900">📚 Uploaded Notes (Chapter-wise)</h3>
              
              {categories.map(category => {
                const categoryProducts = products.filter(p => p.category === category);
                
-               if (categoryProducts.length === 0) return null; // ক্যাটাগরিতে নোট না থাকলে সেটা শো করবে না
+               if (categoryProducts.length === 0) return null;
 
                return (
                  <div key={category} className="mb-8 bg-gray-50 p-5 rounded-2xl border border-gray-200">
@@ -278,7 +278,6 @@ export default function Admin({
                );
              })}
 
-             {/* যদি কোনো নোটের ক্যাটাগরি পুরোনো স্টাইলের (যেমন শুধু Physics) থাকে, সেগুলোর জন্য */}
              {products.filter(p => !categories.includes(p.category)).length > 0 && (
                <div className="mb-8 bg-orange-50 p-5 rounded-2xl border border-orange-200">
                    <h4 className="font-bold text-xl text-orange-700 mb-4 flex items-center gap-2">
