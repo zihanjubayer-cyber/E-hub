@@ -27,8 +27,6 @@ function App() {
   const [selectedCategory, setSelectedCategory] = useState('All');
 
   const [storeSettings, setStoreSettings] = useState({ bkashNumber: '01XXXXXXXXX', nagadNumber: '01XXXXXXXXX' });
-  
-  // 🛑 কুপনের স্টেট
   const [coupons, setCoupons] = useState([]);
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [couponInput, setCouponInput] = useState('');
@@ -39,8 +37,11 @@ function App() {
   const [password, setPassword] = useState('');
   const [orders, setOrders] = useState([]);
   
+  // 🛑 নতুন ফিল্ড: edition, pages, size, target যুক্ত করা হলো
   const [newProduct, setNewProduct] = useState({ 
-    serial: 1, title: '', price: '', category: 'Physics I', writer: '', description: '', demoLink: '', mainLink: '', isFree: false 
+    serial: 1, title: '', price: '', category: 'Physics I', writer: '', 
+    edition: '', pages: '', size: '', target: '', // New Metadata
+    description: '', demoLink: '', mainLink: '', isFree: false 
   });
   
   const [newBkash, setNewBkash] = useState('');
@@ -71,7 +72,6 @@ function App() {
         setNewNagad(data.nagadNumber || '');
       }
 
-      // 🛑 ডেটাবেস থেকে কুপন লোড করা হচ্ছে
       const couponSnap = await getDocs(collection(db, "coupons"));
       setCoupons(couponSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     } catch (error) {}
@@ -127,7 +127,11 @@ function App() {
         await addDoc(collection(db, "products"), productData);
         showToast("Product added!");
       }
-      setNewProduct({ serial: 1, title: '', price: '', category: 'Physics I', writer: '', description: '', demoLink: '', mainLink: '', isFree: false });
+      setNewProduct({ 
+        serial: 1, title: '', price: '', category: 'Physics I', writer: '', 
+        edition: '', pages: '', size: '', target: '', // Reset New Metadata
+        description: '', demoLink: '', mainLink: '', isFree: false 
+      });
       fetchData();
     } catch (error) {}
   };
@@ -142,23 +146,18 @@ function App() {
     setStoreSettings({ bkashNumber: newBkash, nagadNumber: newNagad }); showToast("Payment numbers updated!");
   };
 
-  // 🛑 কুপন অ্যাড করা
   const handleAddCoupon = async (e) => { 
     e.preventDefault(); 
     await addDoc(collection(db, "coupons"), { code: newCoupon.code.toUpperCase(), discount: Number(newCoupon.discount) });
     showToast("Coupon added successfully!"); setNewCoupon({ code: '', discount: '' }); fetchData();
   };
 
-  // 🛑 কুপন ডিলিট/অফ করা
   const handleDeleteCoupon = async (id) => {
     if(window.confirm("Are you sure you want to remove this coupon?")) {
-      await deleteDoc(doc(db, "coupons", id)); 
-      showToast("Coupon removed!"); 
-      fetchData();
+      await deleteDoc(doc(db, "coupons", id)); showToast("Coupon removed!"); fetchData();
     }
   };
 
-  // 🛑 কুপন অ্যাপ্লাই করা
   const applyCoupon = () => {
     if (!couponInput) { showToast("Please enter a coupon code", 'error'); return; }
     const validCoupon = coupons.find(c => c.code === couponInput.toUpperCase());
@@ -166,12 +165,11 @@ function App() {
     else { showToast("Invalid or expired coupon!", 'error'); setAppliedCoupon(null); }
   };
 
-  // 🛑 কুপন রিমুভ করা (ইউজার যখন চাইবে)
   const removeCoupon = () => { setAppliedCoupon(null); setCouponInput(''); showToast("Coupon removed"); };
 
   const handleBuyNow = (product) => {
     if (!user) { showToast('Please login to purchase notes!', 'error'); setActiveTab('auth'); return; }
-    setCheckoutItem(product); setActiveTab('checkout'); setAppliedCoupon(null); setCouponInput(''); // নতুন চেকআউটে কুপন ক্লিয়ার থাকবে
+    setCheckoutItem(product); setActiveTab('checkout'); setAppliedCoupon(null); setCouponInput('');
   };
 
   const handleCheckout = async (e) => {
@@ -218,11 +216,8 @@ function App() {
 
   const handleDeleteOrder = async (orderId) => {
     if(window.confirm("Are you sure you want to permanently delete this order record?")) {
-      try {
-        await deleteDoc(doc(db, "orders", orderId));
-        showToast("Order record deleted!");
-        fetchOrders();
-      } catch (error) { showToast('Error deleting order', 'error'); }
+      try { await deleteDoc(doc(db, "orders", orderId)); showToast("Order record deleted!"); fetchOrders(); } 
+      catch (error) { showToast('Error deleting order', 'error'); }
     }
   };
 
@@ -237,15 +232,9 @@ function App() {
       <Navbar activeTab={activeTab} setActiveTab={setActiveTab} user={user} handleLogout={handleLogout} />
       <main className="flex-grow max-w-5xl mx-auto p-4 md:p-6 w-full mb-10">
         {activeTab === 'store' && <Store searchTerm={searchTerm} setSearchTerm={setSearchTerm} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} loading={loading} filteredProducts={filteredProducts} library={library} handleGetFree={handleGetFree} handleBuyNow={handleBuyNow} showToast={showToast} openPdf={openPdf} />}
-        
-        {/* 🛑 Checkout কম্পোনেন্টে removeCoupon পাঠানো হলো */}
         {activeTab === 'checkout' && <Checkout checkoutItem={checkoutItem} setActiveTab={setActiveTab} couponInput={couponInput} setCouponInput={setCouponInput} applyCoupon={applyCoupon} appliedCoupon={appliedCoupon} removeCoupon={removeCoupon} storeSettings={storeSettings} handleCheckout={handleCheckout} />}
-        
         {activeTab === 'library' && <Library library={library} openPdf={openPdf} />}
-        
-        {/* 🛑 Admin কম্পোনেন্টে coupons এবং handleDeleteCoupon পাঠানো হলো */}
         {activeTab === 'admin' && <Admin isAdmin={isAdmin} user={user} handleLogout={handleLogout} handleLogin={handleLogin} email={email} setEmail={setEmail} password={password} setPassword={setPassword} handleSaveSettings={handleSaveSettings} newBkash={newBkash} setNewBkash={setNewBkash} newNagad={newNagad} setNewNagad={setNewNagad} storeSettings={storeSettings} handleAddCoupon={handleAddCoupon} newCoupon={newCoupon} setNewCoupon={setNewCoupon} coupons={coupons} handleDeleteCoupon={handleDeleteCoupon} handleAddProduct={handleAddProduct} newProduct={newProduct} setNewProduct={setNewProduct} orders={orders} handleApproveOrder={handleApproveOrder} handleDeleteOrder={handleDeleteOrder} products={products} handleDeleteProduct={handleDeleteProduct} />}
-        
         {activeTab === 'auth' && <Auth showToast={showToast} setActiveTab={setActiveTab} />}
       </main>
       <Footer />
