@@ -27,20 +27,21 @@ function App() {
   const [selectedCategory, setSelectedCategory] = useState('All');
 
   const [storeSettings, setStoreSettings] = useState({ bkashNumber: '01XXXXXXXXX', nagadNumber: '01XXXXXXXXX' });
+  
+  // 🛑 কুপনের স্টেট
   const [coupons, setCoupons] = useState([]);
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [couponInput, setCouponInput] = useState('');
+  const [newCoupon, setNewCoupon] = useState({ code: '', discount: '' });
   
   const [user, setUser] = useState(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [orders, setOrders] = useState([]);
   
-  // ক্যাটাগরি Physics I করে দেওয়া হলো
   const [newProduct, setNewProduct] = useState({ 
     serial: 1, title: '', price: '', category: 'Physics I', writer: '', description: '', demoLink: '', mainLink: '', isFree: false 
   });
-  const [newCoupon, setNewCoupon] = useState({ code: '', discount: '' });
   
   const [newBkash, setNewBkash] = useState('');
   const [newNagad, setNewNagad] = useState('');
@@ -59,10 +60,7 @@ function App() {
     try {
       const prodSnap = await getDocs(collection(db, "products"));
       const fetchedProducts = prodSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      
-      // 🛑 ম্যাজিক সর্টিং: সিরিয়াল না থাকলে সেটিকে 9999 ধরে নিচে পাঠিয়ে দেওয়া হবে
       fetchedProducts.sort((a, b) => (Number(a.serial) || 9999) - (Number(b.serial) || 9999));
-      
       setProducts(fetchedProducts);
       
       const settingsDoc = await getDoc(doc(db, "settings", "store"));
@@ -73,6 +71,7 @@ function App() {
         setNewNagad(data.nagadNumber || '');
       }
 
+      // 🛑 ডেটাবেস থেকে কুপন লোড করা হচ্ছে
       const couponSnap = await getDocs(collection(db, "coupons"));
       setCoupons(couponSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     } catch (error) {}
@@ -117,7 +116,7 @@ function App() {
     try {
       const productData = {
         ...newProduct,
-        serial: Number(newProduct.serial) || 9999, // ইনপুট না দিলে 9999 ধরে নেবে
+        serial: Number(newProduct.serial) || 9999,
         price: newProduct.isFree ? 0 : Number(newProduct.price)
       };
       
@@ -143,18 +142,36 @@ function App() {
     setStoreSettings({ bkashNumber: newBkash, nagadNumber: newNagad }); showToast("Payment numbers updated!");
   };
 
+  // 🛑 কুপন অ্যাড করা
   const handleAddCoupon = async (e) => { 
-    e.preventDefault(); await addDoc(collection(db, "coupons"), { code: newCoupon.code.toUpperCase(), discount: Number(newCoupon.discount) });
-    showToast("Coupon added!"); setNewCoupon({ code: '', discount: '' }); fetchData();
+    e.preventDefault(); 
+    await addDoc(collection(db, "coupons"), { code: newCoupon.code.toUpperCase(), discount: Number(newCoupon.discount) });
+    showToast("Coupon added successfully!"); setNewCoupon({ code: '', discount: '' }); fetchData();
   };
+
+  // 🛑 কুপন ডিলিট/অফ করা
+  const handleDeleteCoupon = async (id) => {
+    if(window.confirm("Are you sure you want to remove this coupon?")) {
+      await deleteDoc(doc(db, "coupons", id)); 
+      showToast("Coupon removed!"); 
+      fetchData();
+    }
+  };
+
+  // 🛑 কুপন অ্যাপ্লাই করা
   const applyCoupon = () => {
+    if (!couponInput) { showToast("Please enter a coupon code", 'error'); return; }
     const validCoupon = coupons.find(c => c.code === couponInput.toUpperCase());
-    if (validCoupon) { setAppliedCoupon(validCoupon); showToast(`Coupon applied!`); } else { showToast("Invalid coupon!", 'error'); setAppliedCoupon(null); }
+    if (validCoupon) { setAppliedCoupon(validCoupon); showToast(`${validCoupon.discount}% Discount Applied!`); } 
+    else { showToast("Invalid or expired coupon!", 'error'); setAppliedCoupon(null); }
   };
+
+  // 🛑 কুপন রিমুভ করা (ইউজার যখন চাইবে)
+  const removeCoupon = () => { setAppliedCoupon(null); setCouponInput(''); showToast("Coupon removed"); };
 
   const handleBuyNow = (product) => {
     if (!user) { showToast('Please login to purchase notes!', 'error'); setActiveTab('auth'); return; }
-    setCheckoutItem(product); setActiveTab('checkout');
+    setCheckoutItem(product); setActiveTab('checkout'); setAppliedCoupon(null); setCouponInput(''); // নতুন চেকআউটে কুপন ক্লিয়ার থাকবে
   };
 
   const handleCheckout = async (e) => {
@@ -170,7 +187,7 @@ function App() {
         totalPaid: finalTotal, status: 'Pending', timestamp: new Date().toISOString()
       });
       showToast('Order submitted successfully!');
-      setCheckoutItem(null); setAppliedCoupon(null); setActiveTab('library');
+      setCheckoutItem(null); setAppliedCoupon(null); setCouponInput(''); setActiveTab('library');
     } catch (error) { showToast('Error submitting order', 'error'); }
   };
 
@@ -220,9 +237,15 @@ function App() {
       <Navbar activeTab={activeTab} setActiveTab={setActiveTab} user={user} handleLogout={handleLogout} />
       <main className="flex-grow max-w-5xl mx-auto p-4 md:p-6 w-full mb-10">
         {activeTab === 'store' && <Store searchTerm={searchTerm} setSearchTerm={setSearchTerm} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} loading={loading} filteredProducts={filteredProducts} library={library} handleGetFree={handleGetFree} handleBuyNow={handleBuyNow} showToast={showToast} openPdf={openPdf} />}
-        {activeTab === 'checkout' && <Checkout checkoutItem={checkoutItem} setActiveTab={setActiveTab} couponInput={couponInput} setCouponInput={setCouponInput} applyCoupon={applyCoupon} appliedCoupon={appliedCoupon} storeSettings={storeSettings} handleCheckout={handleCheckout} />}
+        
+        {/* 🛑 Checkout কম্পোনেন্টে removeCoupon পাঠানো হলো */}
+        {activeTab === 'checkout' && <Checkout checkoutItem={checkoutItem} setActiveTab={setActiveTab} couponInput={couponInput} setCouponInput={setCouponInput} applyCoupon={applyCoupon} appliedCoupon={appliedCoupon} removeCoupon={removeCoupon} storeSettings={storeSettings} handleCheckout={handleCheckout} />}
+        
         {activeTab === 'library' && <Library library={library} openPdf={openPdf} />}
-        {activeTab === 'admin' && <Admin isAdmin={isAdmin} user={user} handleLogout={handleLogout} handleLogin={handleLogin} email={email} setEmail={setEmail} password={password} setPassword={setPassword} handleSaveSettings={handleSaveSettings} newBkash={newBkash} setNewBkash={setNewBkash} newNagad={newNagad} setNewNagad={setNewNagad} storeSettings={storeSettings} handleAddCoupon={handleAddCoupon} newCoupon={newCoupon} setNewCoupon={setNewCoupon} handleAddProduct={handleAddProduct} newProduct={newProduct} setNewProduct={setNewProduct} orders={orders} handleApproveOrder={handleApproveOrder} handleDeleteOrder={handleDeleteOrder} products={products} handleDeleteProduct={handleDeleteProduct} />}
+        
+        {/* 🛑 Admin কম্পোনেন্টে coupons এবং handleDeleteCoupon পাঠানো হলো */}
+        {activeTab === 'admin' && <Admin isAdmin={isAdmin} user={user} handleLogout={handleLogout} handleLogin={handleLogin} email={email} setEmail={setEmail} password={password} setPassword={setPassword} handleSaveSettings={handleSaveSettings} newBkash={newBkash} setNewBkash={setNewBkash} newNagad={newNagad} setNewNagad={setNewNagad} storeSettings={storeSettings} handleAddCoupon={handleAddCoupon} newCoupon={newCoupon} setNewCoupon={setNewCoupon} coupons={coupons} handleDeleteCoupon={handleDeleteCoupon} handleAddProduct={handleAddProduct} newProduct={newProduct} setNewProduct={setNewProduct} orders={orders} handleApproveOrder={handleApproveOrder} handleDeleteOrder={handleDeleteOrder} products={products} handleDeleteProduct={handleDeleteProduct} />}
+        
         {activeTab === 'auth' && <Auth showToast={showToast} setActiveTab={setActiveTab} />}
       </main>
       <Footer />
