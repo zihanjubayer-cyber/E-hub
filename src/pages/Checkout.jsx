@@ -6,8 +6,8 @@ export default function Checkout({
   if (!checkoutItem) {
     return (
       <div className="text-center py-20 animate-fade-in bg-white rounded-3xl shadow-sm border border-gray-100 max-w-lg mx-auto mt-10">
-         <h3 className="text-2xl font-bold text-gray-800">No item selected!</h3>
-         <button onClick={() => setActiveTab('store')} className="mt-6 bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-3 rounded-xl font-bold transition">Go to Store</button>
+         <h3 className="text-2xl font-bold text-gray-800">কোনো নোট সিলেক্ট করা হয়নি!</h3>
+         <button onClick={() => setActiveTab('store')} className="mt-6 bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-3 rounded-xl font-bold transition">স্টোরে ফিরে যান</button>
       </div>
     );
   }
@@ -43,20 +43,28 @@ export default function Checkout({
         {/* Right: Payment Info */}
         <div className="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-gray-100">
            <h3 className="font-extrabold text-2xl mb-4 text-gray-900">Payment & Verification</h3>
-           <div className="bg-emerald-50 border border-emerald-100 p-5 rounded-2xl mb-8 text-emerald-900 text-sm leading-relaxed">
-              <p className="font-bold mb-2 text-base">How to pay:</p>
-              <p>1. Send exactly <b className="text-lg">৳{finalTotal}</b> to <b className="text-lg bg-emerald-200 px-2 py-0.5 rounded">{storeSettings?.paymentNumber}</b> via bKash/Nagad Send Money.</p>
-              <p className="mt-2">2. Enter your Phone Number & Transaction ID below to verify your purchase.</p>
+           
+           {/* 🛑 নতুন বাংলায় লেখা ইনস্ট্রাকশন বক্স */}
+           <div className="bg-emerald-50 border border-emerald-100 p-5 rounded-2xl mb-8 text-emerald-900 text-sm leading-relaxed shadow-inner">
+              <p className="font-extrabold mb-3 text-base border-b border-emerald-200 pb-2">কীভাবে পেমেন্ট করবেন?</p>
+              <ul className="space-y-3 font-medium">
+                 <li>১. আপনার বিকাশ বা নগদ থেকে <b className="text-lg bg-emerald-200 px-2 py-0.5 rounded tracking-wider shadow-sm">{storeSettings?.paymentNumber}</b> নাম্বারে ঠিক <b className="text-lg text-emerald-700">৳{finalTotal}</b> 'Send Money' করুন।</li>
+                 <li>২. টাকা পাঠানো হয়ে গেলে, যে নাম্বার থেকে টাকা পাঠিয়েছেন সেটি এবং Transaction ID (TrxID) নিচের বক্সে দিয়ে ফর্মটি সাবমিট করুন।</li>
+                 <li className="bg-white p-3 rounded-xl border border-emerald-100 text-emerald-800 text-xs font-bold flex gap-2 items-start mt-2">
+                    <span className="text-lg">✨</span>
+                    অর্ডারটি অ্যাডমিন অ্যাপ্রুভ করার সাথে সাথেই নোটটি আপনার 'Library'-তে যুক্ত হয়ে যাবে!
+                 </li>
+              </ul>
            </div>
            
            <form onSubmit={handleCheckout} className="space-y-4">
               <div>
-                 <label className="block text-sm font-bold mb-2 text-gray-700">Payment Number (bKash/Nagad)</label>
-                 <input type="text" name="phone" placeholder="e.g. 017XXXXXXXX" required className="w-full border border-gray-300 p-4 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 font-bold text-gray-700" />
+                 <label className="block text-sm font-bold mb-2 text-gray-700">যে নাম্বার থেকে টাকা পাঠিয়েছেন (bKash/Nagad)</label>
+                 <input type="text" name="phone" placeholder="যেমন: 017XXXXXXXX" required className="w-full border border-gray-300 p-4 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 font-bold text-gray-700" />
               </div>
               <div>
                  <label className="block text-sm font-bold mb-2 text-gray-700">Transaction ID (TrxID)</label>
-                 <input type="text" name="trxId" placeholder="e.g. 9JD8K2L..." required className="w-full border border-gray-300 p-4 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 font-bold text-gray-700" />
+                 <input type="text" name="trxId" placeholder="যেমন: 9JD8K2L..." required className="w-full border border-gray-300 p-4 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 font-bold text-gray-700" />
               </div>
               <button type="submit" className="w-full bg-emerald-600 text-white py-4 rounded-xl font-black text-lg hover:bg-emerald-700 shadow-lg transition mt-4">Place Order</button>
            </form>
