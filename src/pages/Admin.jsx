@@ -5,12 +5,12 @@ const Icons = { Lock: <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5
 export default function Admin({
   user, isAdmin, handleLogout, handleLogin, email, setEmail, password, setPassword,
   handleSaveSettings, newBkash, setNewBkash, newNagad, setNewNagad, storeSettings,
-  handleAddCoupon, newCoupon, setNewCoupon, handleAddProduct, newProduct, setNewProduct,
+  handleAddCoupon, newCoupon, setNewCoupon, coupons, handleDeleteCoupon, // 🛑 কুপন প্রপস
+  handleAddProduct, newProduct, setNewProduct,
   orders, handleApproveOrder, handleDeleteOrder, products, handleDeleteProduct
 }) {
   const [selectedOrder, setSelectedOrder] = useState(null); 
 
-  // 🛑 ক্যাটাগরিগুলো I, II স্টাইলে আপডেট করা হলো
   const categories = [
     'Physics I', 'Physics II', 
     'Chemistry I', 'Chemistry II', 
@@ -66,22 +66,38 @@ export default function Admin({
         <div className="space-y-12">
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-gray-50 p-6 rounded-2xl border border-gray-200">
+            <div className="bg-gray-50 p-6 rounded-2xl border border-gray-200 h-fit">
               <h3 className="font-bold text-lg mb-4 text-gray-800">Payment Numbers Setup</h3>
               <form onSubmit={handleSaveSettings} className="space-y-3">
-                <input type="text" placeholder="bKash Number" required value={newBkash} onChange={e => setNewBkash(e.target.value)} className="w-full border border-pink-200 p-3 rounded-xl outline-none focus:ring-2 focus:ring-pink-500 bg-pink-50 placeholder-pink-300"/>
-                <input type="text" placeholder="Nagad Number" required value={newNagad} onChange={e => setNewNagad(e.target.value)} className="w-full border border-orange-200 p-3 rounded-xl outline-none focus:ring-2 focus:ring-orange-500 bg-orange-50 placeholder-orange-300"/>
+                <input type="text" placeholder="bKash Number" required value={newBkash} onChange={e => setNewBkash(e.target.value)} className="w-full border border-pink-200 p-3 rounded-xl outline-none focus:ring-2 focus:ring-pink-500 bg-pink-50 placeholder-pink-300 font-bold text-pink-700"/>
+                <input type="text" placeholder="Nagad Number" required value={newNagad} onChange={e => setNewNagad(e.target.value)} className="w-full border border-orange-200 p-3 rounded-xl outline-none focus:ring-2 focus:ring-orange-500 bg-orange-50 placeholder-orange-300 font-bold text-orange-700"/>
                 <button type="submit" className="w-full bg-gray-900 text-white py-3 rounded-xl font-bold hover:bg-black transition">Save Numbers</button>
               </form>
             </div>
 
             <div className="bg-emerald-50 p-6 rounded-2xl border border-emerald-100">
-              <h3 className="font-bold text-lg mb-4 text-emerald-900">Create Coupon</h3>
-              <form onSubmit={handleAddCoupon} className="flex gap-2">
-                <input type="text" placeholder="CODE" required value={newCoupon.code} onChange={e => setNewCoupon({...newCoupon, code: e.target.value})} className="border border-emerald-200 p-3 rounded-xl w-1/2 uppercase outline-none"/>
-                <input type="number" placeholder="%" required value={newCoupon.discount} onChange={e => setNewCoupon({...newCoupon, discount: e.target.value})} className="border border-emerald-200 p-3 rounded-xl w-1/4 outline-none"/>
+              <h3 className="font-bold text-lg mb-4 text-emerald-900">Manage Coupons</h3>
+              <form onSubmit={handleAddCoupon} className="flex gap-2 mb-4">
+                <input type="text" placeholder="CODE" required value={newCoupon.code} onChange={e => setNewCoupon({...newCoupon, code: e.target.value})} className="border border-emerald-200 p-3 rounded-xl w-1/2 uppercase outline-none font-bold"/>
+                <input type="number" placeholder="%" required value={newCoupon.discount} onChange={e => setNewCoupon({...newCoupon, discount: e.target.value})} className="border border-emerald-200 p-3 rounded-xl w-1/4 outline-none font-bold"/>
                 <button type="submit" className="bg-emerald-600 text-white px-4 py-3 rounded-xl font-bold w-1/4 hover:bg-emerald-700 transition">+</button>
               </form>
+              
+              {/* 🛑 অ্যাক্টিভ কুপন লিস্ট */}
+              {coupons.length > 0 && (
+                <div className="mt-4 space-y-2 border-t border-emerald-200 pt-4">
+                  <p className="text-xs font-bold text-emerald-700 uppercase tracking-wider mb-2">Active Coupons</p>
+                  {coupons.map(c => (
+                    <div key={c.id} className="flex justify-between items-center bg-white p-3 rounded-xl border border-emerald-100 shadow-sm">
+                      <div>
+                        <p className="font-black text-gray-800 tracking-widest">{c.code}</p>
+                        <p className="text-xs font-bold text-emerald-600">{c.discount}% OFF</p>
+                      </div>
+                      <button onClick={() => handleDeleteCoupon(c.id)} className="text-red-500 bg-red-50 px-3 py-1 rounded-lg text-xs font-bold hover:bg-red-100 transition">Delete</button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -174,7 +190,6 @@ export default function Admin({
                {products.map(p => (
                  <div key={p.id} className="flex justify-between items-center bg-white border border-gray-200 p-5 rounded-2xl shadow-sm hover:border-gray-300 transition">
                    <div>
-                     {/* 🛑 আগের নোটগুলোতে সিরিয়াল না থাকলে ? দেখাবে */}
                      <p className="font-bold text-gray-800 text-lg mb-1">{p.serial === 9999 || !p.serial ? '?' : p.serial}. {p.title}</p>
                      <p className="text-sm font-black text-emerald-600">{p.isFree ? 'Free' : `৳${p.price}`} <span className="text-xs text-gray-400 font-normal ml-2">{p.category}</span></p>
                    </div>
