@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 export default function Home({ products, setActiveTab, setSearchTerm, setSelectedCategory }) {
   const [localSearch, setLocalSearch] = useState('');
 
+  // 🛑 সার্চ বা ক্লিক করলে সরাসরি স্টোরে ফিল্টার হয়ে যাবে
   const handleSmartSearch = (term, category = 'All') => {
     setSearchTerm(term);
     setSelectedCategory(category);
@@ -14,19 +15,19 @@ export default function Home({ products, setActiveTab, setSearchTerm, setSelecte
     if(localSearch.trim()) handleSmartSearch(localSearch);
   };
 
-  // 🛑 ডেটাবেস থেকে ইউনিক ডেটা বের করা হচ্ছে
+  // 🛑 ডেটাবেস থেকে সকল ইউনিক ডেটা বের করা হচ্ছে (কোনো লিমিট নেই, সবগুলো পিডিএফ শো করবে)
+  const categoriesList = [...new Set(products.map(p => p.category).filter(Boolean))];
+  const chapters = [...new Set(products.map(p => p.title).filter(Boolean))]; 
   const writers = [...new Set(products.map(p => p.writer).filter(Boolean))];
   const targets = [...new Set(products.map(p => p.target).filter(Boolean))];
   const editions = [...new Set(products.map(p => p.edition).filter(Boolean))];
-  const chapters = [...new Set(products.map(p => p.title).filter(Boolean))].slice(0, 8);
   
-  // 🛑 একদম নতুন আপলোড হওয়া ৩টি নোট
   const recentNotes = [...products].reverse().slice(0, 3);
 
   return (
     <div className="animate-fade-in space-y-12 pb-10">
       
-      {/* 🛑 1. Gorgeous Hero Section */}
+      {/* 1. Hero Section */}
       <div className="bg-gray-900 rounded-[2.5rem] p-8 md:p-16 text-center text-white shadow-2xl relative overflow-hidden flex flex-col items-center justify-center min-h-[400px]">
          <div className="absolute inset-0 bg-gradient-to-br from-emerald-900/80 via-gray-900 to-teal-900/80"></div>
          <div className="absolute top-0 left-0 w-full h-full opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
@@ -47,7 +48,7 @@ export default function Home({ products, setActiveTab, setSearchTerm, setSelecte
          </div>
       </div>
 
-      {/* 🛑 2. Floating Trust Badges */}
+      {/* 2. Floating Trust Badges */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl mx-auto -mt-16 relative z-20 px-4">
          <div className="bg-white p-5 rounded-2xl shadow-xl border border-gray-100 flex items-center justify-center gap-3 transform hover:-translate-y-1 transition">
             <span className="text-3xl">✅</span>
@@ -63,12 +64,39 @@ export default function Home({ products, setActiveTab, setSearchTerm, setSelecte
          </div>
       </div>
 
-      {/* 🛑 3. Beautiful Writer Cards */}
+      {/* 🛑 3. Subjects / Categories Folder (New!) */}
+      {categoriesList.length > 0 && (
+        <div>
+          <h3 className="font-black text-2xl text-gray-900 mb-6 border-l-4 border-emerald-500 pl-3">বিষয়সমূহ 📂</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {categoriesList.map((cat, idx) => (
+              <button key={cat} onClick={() => handleSmartSearch('', cat)} className={`text-left p-6 rounded-3xl shadow-sm hover:shadow-md transition-all transform hover:-translate-y-1 group bg-gradient-to-br ${['from-emerald-50 to-teal-50 border-emerald-100', 'from-blue-50 to-indigo-50 border-blue-100', 'from-orange-50 to-red-50 border-orange-100', 'from-fuchsia-50 to-pink-50 border-fuchsia-100'][idx % 4]} border`}>
+                <h4 className="font-extrabold text-gray-800 text-xl group-hover:text-emerald-800 leading-tight">{cat}</h4>
+                <p className="text-sm text-gray-500 mt-2 font-semibold">সব নোট দেখুন &rarr;</p>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 🛑 4. All Chapters (No Limit) */}
+      {chapters.length > 0 && (
+        <div>
+          <h3 className="font-black text-2xl text-gray-900 mb-6 border-l-4 border-emerald-500 pl-3">সকল অধ্যায় 📑</h3>
+          <div className="flex flex-wrap gap-3">
+            {chapters.map(c => (
+              <button key={c} onClick={() => handleSmartSearch(c)} className="bg-white border border-gray-200 text-gray-700 px-5 py-2.5 rounded-xl font-bold hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300 transition shadow-sm">
+                {c}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 🛑 5. Popular Writers */}
       {writers.length > 0 && (
         <div>
-          <div className="flex justify-between items-end mb-6">
-            <h3 className="font-black text-2xl text-gray-900">জনপ্রিয় রাইটার ✍️</h3>
-          </div>
+          <h3 className="font-black text-2xl text-gray-900 mb-6 border-l-4 border-emerald-500 pl-3">জনপ্রিয় রাইটার ✍️</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {writers.map((w, idx) => (
               <button key={w} onClick={() => handleSmartSearch(w)} className="bg-white border border-gray-100 p-6 rounded-3xl shadow-sm hover:shadow-lg hover:border-emerald-200 transition text-center group flex flex-col items-center justify-center gap-4">
@@ -82,25 +110,8 @@ export default function Home({ products, setActiveTab, setSearchTerm, setSelecte
         </div>
       )}
 
-      {/* 🛑 4. Colorful Chapter Gradients */}
-      {chapters.length > 0 && (
-        <div>
-          <div className="flex justify-between items-end mb-6">
-            <h3 className="font-black text-2xl text-gray-900">অধ্যায়সমূহ 📚</h3>
-            <button onClick={() => setActiveTab('store')} className="text-emerald-600 font-bold hover:underline">সবগুলো দেখো &rarr;</button>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {chapters.map((c, idx) => (
-              <button key={c} onClick={() => handleSmartSearch(c)} className={`text-left p-6 rounded-3xl shadow-sm hover:shadow-md transition-all transform hover:-translate-y-1 group bg-gradient-to-br ${['from-emerald-50 to-teal-50 border-emerald-100', 'from-blue-50 to-indigo-50 border-blue-100', 'from-orange-50 to-red-50 border-orange-100', 'from-fuchsia-50 to-pink-50 border-fuchsia-100'][idx % 4]} border`}>
-                <h4 className="font-extrabold text-gray-800 text-xl group-hover:text-emerald-800 leading-tight">{c}</h4>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* 🛑 5. Interactive Target & Edition Pills */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      {/* 🛑 6. Target & Edition */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-6">
          {targets.length > 0 && (
            <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
              <h3 className="font-black text-xl text-gray-900 mb-5">টার্গেট ব্যাচ 🎯</h3>
@@ -123,9 +134,9 @@ export default function Home({ products, setActiveTab, setSearchTerm, setSelecte
          )}
       </div>
 
-      {/* 🛑 6. Dark Theme Recent Uploads Preview */}
+      {/* 7. Recent Notes */}
       {recentNotes.length > 0 && (
-        <div className="mt-8 bg-gray-900 rounded-[2rem] p-8 md:p-12 shadow-xl">
+        <div className="mt-12 bg-gray-900 rounded-[2rem] p-8 md:p-12 shadow-xl">
           <div className="flex justify-between items-end mb-8">
             <div>
               <h3 className="font-black text-3xl text-white mb-2">🔥 লেটেস্ট নোটসমূহ</h3>
