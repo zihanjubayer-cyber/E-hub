@@ -6,6 +6,7 @@ import { auth, db } from './config/firebase';
 
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
+import Home from './pages/Home'; // 🛑 Home Import করা হলো
 import Store from './pages/Store';
 import Checkout from './pages/Checkout';
 import Library from './pages/Library';
@@ -16,7 +17,8 @@ import PdfViewer from './components/PdfViewer';
 const ADMIN_EMAILS = ['zihanjubayer@gmail.com', 'talhajubayer312@gmail.com']; 
 
 function App() {
-  const [activeTab, setActiveTab] = useState('store'); 
+  // 🛑 ওয়েবসাইটের ডিফল্ট পেজ এখন 'home'
+  const [activeTab, setActiveTab] = useState('home'); 
   const [products, setProducts] = useState([]);
   const [checkoutItem, setCheckoutItem] = useState(null); 
   const [library, setLibrary] = useState([]); 
@@ -37,10 +39,9 @@ function App() {
   const [password, setPassword] = useState('');
   const [orders, setOrders] = useState([]);
   
-  // 🛑 নতুন ফিল্ড: edition, pages, size, target যুক্ত করা হলো
   const [newProduct, setNewProduct] = useState({ 
     serial: 1, title: '', price: '', category: 'Physics I', writer: '', 
-    edition: '', pages: '', size: '', target: '', // New Metadata
+    edition: '', pages: '', size: '', target: '', 
     description: '', demoLink: '', mainLink: '', isFree: false 
   });
   
@@ -109,60 +110,31 @@ function App() {
       else { showToast('Access Denied!', 'error'); signOut(auth); }
     } catch (error) { showToast('Login failed!', 'error'); }
   };
-  const handleLogout = () => { signOut(auth); showToast('Logged out'); setActiveTab('store'); };
+  const handleLogout = () => { signOut(auth); showToast('Logged out'); setActiveTab('home'); };
 
   const handleAddProduct = async (e) => {
     e.preventDefault();
     try {
-      const productData = {
-        ...newProduct,
-        serial: Number(newProduct.serial) || 9999,
-        price: newProduct.isFree ? 0 : Number(newProduct.price)
-      };
-      
-      if (newProduct.id) {
-        await updateDoc(doc(db, "products", newProduct.id), productData);
-        showToast("Product updated!");
-      } else {
-        await addDoc(collection(db, "products"), productData);
-        showToast("Product added!");
-      }
-      setNewProduct({ 
-        serial: 1, title: '', price: '', category: 'Physics I', writer: '', 
-        edition: '', pages: '', size: '', target: '', // Reset New Metadata
-        description: '', demoLink: '', mainLink: '', isFree: false 
-      });
+      const productData = { ...newProduct, serial: Number(newProduct.serial) || 9999, price: newProduct.isFree ? 0 : Number(newProduct.price) };
+      if (newProduct.id) { await updateDoc(doc(db, "products", newProduct.id), productData); showToast("Product updated!"); } 
+      else { await addDoc(collection(db, "products"), productData); showToast("Product added!"); }
+      setNewProduct({ serial: 1, title: '', price: '', category: 'Physics I', writer: '', edition: '', pages: '', size: '', target: '', description: '', demoLink: '', mainLink: '', isFree: false });
       fetchData();
     } catch (error) {}
   };
 
-  const handleDeleteProduct = async (id) => {
-    if(window.confirm("Delete this note?")) { await deleteDoc(doc(db, "products", id)); showToast("Deleted!"); fetchData(); }
-  };
+  const handleDeleteProduct = async (id) => { if(window.confirm("Delete this note?")) { await deleteDoc(doc(db, "products", id)); showToast("Deleted!"); fetchData(); } };
 
-  const handleSaveSettings = async (e) => {
-    e.preventDefault();
-    await setDoc(doc(db, "settings", "store"), { bkashNumber: newBkash, nagadNumber: newNagad });
-    setStoreSettings({ bkashNumber: newBkash, nagadNumber: newNagad }); showToast("Payment numbers updated!");
-  };
+  const handleSaveSettings = async (e) => { e.preventDefault(); await setDoc(doc(db, "settings", "store"), { bkashNumber: newBkash, nagadNumber: newNagad }); setStoreSettings({ bkashNumber: newBkash, nagadNumber: newNagad }); showToast("Payment numbers updated!"); };
 
-  const handleAddCoupon = async (e) => { 
-    e.preventDefault(); 
-    await addDoc(collection(db, "coupons"), { code: newCoupon.code.toUpperCase(), discount: Number(newCoupon.discount) });
-    showToast("Coupon added successfully!"); setNewCoupon({ code: '', discount: '' }); fetchData();
-  };
+  const handleAddCoupon = async (e) => { e.preventDefault(); await addDoc(collection(db, "coupons"), { code: newCoupon.code.toUpperCase(), discount: Number(newCoupon.discount) }); showToast("Coupon added successfully!"); setNewCoupon({ code: '', discount: '' }); fetchData(); };
 
-  const handleDeleteCoupon = async (id) => {
-    if(window.confirm("Are you sure you want to remove this coupon?")) {
-      await deleteDoc(doc(db, "coupons", id)); showToast("Coupon removed!"); fetchData();
-    }
-  };
+  const handleDeleteCoupon = async (id) => { if(window.confirm("Are you sure you want to remove this coupon?")) { await deleteDoc(doc(db, "coupons", id)); showToast("Coupon removed!"); fetchData(); } };
 
   const applyCoupon = () => {
     if (!couponInput) { showToast("Please enter a coupon code", 'error'); return; }
     const validCoupon = coupons.find(c => c.code === couponInput.toUpperCase());
-    if (validCoupon) { setAppliedCoupon(validCoupon); showToast(`${validCoupon.discount}% Discount Applied!`); } 
-    else { showToast("Invalid or expired coupon!", 'error'); setAppliedCoupon(null); }
+    if (validCoupon) { setAppliedCoupon(validCoupon); showToast(`${validCoupon.discount}% Discount Applied!`); } else { showToast("Invalid or expired coupon!", 'error'); setAppliedCoupon(null); }
   };
 
   const removeCoupon = () => { setAppliedCoupon(null); setCouponInput(''); showToast("Coupon removed"); };
@@ -174,28 +146,18 @@ function App() {
 
   const handleCheckout = async (e) => {
     e.preventDefault();
-    const phone = e.target.phone.value;
-    const trxId = e.target.trxId.value;
-    const paymentMethod = e.target.paymentMethod.value;
     const finalTotal = appliedCoupon ? checkoutItem.price - (checkoutItem.price * (appliedCoupon.discount / 100)) : checkoutItem.price;
-
     try {
-      await addDoc(collection(db, "orders"), {
-        userId: user.uid, phone, trxId, paymentMethod, product: checkoutItem,
-        totalPaid: finalTotal, status: 'Pending', timestamp: new Date().toISOString()
-      });
-      showToast('Order submitted successfully!');
-      setCheckoutItem(null); setAppliedCoupon(null); setCouponInput(''); setActiveTab('library');
+      await addDoc(collection(db, "orders"), { userId: user.uid, phone: e.target.phone.value, trxId: e.target.trxId.value, paymentMethod: e.target.paymentMethod.value, product: checkoutItem, totalPaid: finalTotal, status: 'Pending', timestamp: new Date().toISOString() });
+      showToast('Order submitted successfully!'); setCheckoutItem(null); setAppliedCoupon(null); setCouponInput(''); setActiveTab('library');
     } catch (error) { showToast('Error submitting order', 'error'); }
   };
 
   const handleGetFree = async (product) => { 
     if (!user) { showToast('Please login first!', 'error'); setActiveTab('auth'); return; }
     if(!library.find(item => item.id === product.id)) {
-      const newLibrary = [...library, product];
-      setLibrary(newLibrary);
-      await setDoc(doc(db, "users", user.uid), { library: newLibrary }, { merge: true });
-      showToast('Free note added!');
+      const newLibrary = [...library, product]; setLibrary(newLibrary);
+      await setDoc(doc(db, "users", user.uid), { library: newLibrary }, { merge: true }); showToast('Free note added!');
     }
   };
 
@@ -203,40 +165,40 @@ function App() {
     try {
       await updateDoc(doc(db, "orders", orderId), { status: 'Approved' });
       if (orderUserId && orderProduct) {
-        const userRef = doc(db, "users", orderUserId);
-        const userSnap = await getDoc(userRef);
-        let currentLib = userSnap.exists() ? (userSnap.data().library || []) : [];
-        if (!currentLib.find(l => l.id === orderProduct.id)) {
-          await setDoc(userRef, { library: [...currentLib, orderProduct] }, { merge: true });
-        }
+        const userRef = doc(db, "users", orderUserId); const userSnap = await getDoc(userRef); let currentLib = userSnap.exists() ? (userSnap.data().library || []) : [];
+        if (!currentLib.find(l => l.id === orderProduct.id)) { await setDoc(userRef, { library: [...currentLib, orderProduct] }, { merge: true }); }
       }
       showToast('Order Approved & Sent to Student!'); fetchOrders();
     } catch (error) { showToast('Error approving order', 'error'); }
   };
 
-  const handleDeleteOrder = async (orderId) => {
-    if(window.confirm("Are you sure you want to permanently delete this order record?")) {
-      try { await deleteDoc(doc(db, "orders", orderId)); showToast("Order record deleted!"); fetchOrders(); } 
-      catch (error) { showToast('Error deleting order', 'error'); }
-    }
-  };
+  const handleDeleteOrder = async (orderId) => { if(window.confirm("Are you sure?")) { try { await deleteDoc(doc(db, "orders", orderId)); showToast("Order deleted!"); fetchOrders(); } catch (error) { showToast('Error deleting order', 'error'); } } };
 
-  const filteredProducts = products.filter(p => 
-    (selectedCategory === 'All' || p.category === selectedCategory) &&
-    p.title.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // 🛑 অ্যাডভান্সড স্মার্ট ফিল্টার লজিক: এখন টাইটেল, রাইটার, এডিশন, টার্গেট সবকিছু দিয়ে সার্চ করা যাবে
+  const filteredProducts = products.filter(p => {
+    const catMatch = selectedCategory === 'All' || p.category === selectedCategory;
+    const searchMatch = searchTerm === '' || 
+      [p.title, p.writer, p.edition, p.target, p.category, p.description]
+        .some(val => val && val.toLowerCase().includes(searchTerm.toLowerCase()));
+    return catMatch && searchMatch;
+  });
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-800 font-sans relative flex flex-col">
       {toast && <div className={`fixed top-20 right-5 px-6 py-3 rounded-xl shadow-2xl z-50 text-white font-semibold transition-all ${toast.type === 'error' ? 'bg-red-500' : 'bg-emerald-600'}`}>{toast.message}</div>}
       <Navbar activeTab={activeTab} setActiveTab={setActiveTab} user={user} handleLogout={handleLogout} />
+      
       <main className="flex-grow max-w-5xl mx-auto p-4 md:p-6 w-full mb-10">
+        {/* 🛑 Home পেজের রাউটিং */}
+        {activeTab === 'home' && <Home products={products} setActiveTab={setActiveTab} setSearchTerm={setSearchTerm} setSelectedCategory={setSelectedCategory} />}
+        
         {activeTab === 'store' && <Store searchTerm={searchTerm} setSearchTerm={setSearchTerm} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} loading={loading} filteredProducts={filteredProducts} library={library} handleGetFree={handleGetFree} handleBuyNow={handleBuyNow} showToast={showToast} openPdf={openPdf} />}
         {activeTab === 'checkout' && <Checkout checkoutItem={checkoutItem} setActiveTab={setActiveTab} couponInput={couponInput} setCouponInput={setCouponInput} applyCoupon={applyCoupon} appliedCoupon={appliedCoupon} removeCoupon={removeCoupon} storeSettings={storeSettings} handleCheckout={handleCheckout} />}
         {activeTab === 'library' && <Library library={library} openPdf={openPdf} />}
         {activeTab === 'admin' && <Admin isAdmin={isAdmin} user={user} handleLogout={handleLogout} handleLogin={handleLogin} email={email} setEmail={setEmail} password={password} setPassword={setPassword} handleSaveSettings={handleSaveSettings} newBkash={newBkash} setNewBkash={setNewBkash} newNagad={newNagad} setNewNagad={setNewNagad} storeSettings={storeSettings} handleAddCoupon={handleAddCoupon} newCoupon={newCoupon} setNewCoupon={setNewCoupon} coupons={coupons} handleDeleteCoupon={handleDeleteCoupon} handleAddProduct={handleAddProduct} newProduct={newProduct} setNewProduct={setNewProduct} orders={orders} handleApproveOrder={handleApproveOrder} handleDeleteOrder={handleDeleteOrder} products={products} handleDeleteProduct={handleDeleteProduct} />}
         {activeTab === 'auth' && <Auth showToast={showToast} setActiveTab={setActiveTab} />}
       </main>
+      
       <Footer />
       <PdfViewer isOpen={viewerOpen} onClose={() => setViewerOpen(false)} pdfUrl={currentPdfUrl} title={currentTitle} />
     </div>
