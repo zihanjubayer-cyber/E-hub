@@ -7,6 +7,13 @@ export default function Store({
   loading, filteredProducts, library, 
   handleGetFree, handleBuyNow, openPdf 
 }) {
+  const categories = [
+    'All', 'Physics 1st Paper', 'Physics 2nd Paper', 
+    'Chemistry 1st Paper', 'Chemistry 2nd Paper', 
+    'Higher Math 1st Paper', 'Higher Math 2nd Paper', 
+    'Admission Special', 'Full Book Solution Bundle'
+  ];
+
   return (
     <div className="animate-fade-in relative">
       <div className="bg-gradient-to-br from-emerald-800 to-teal-900 rounded-3xl p-8 md:p-12 text-center text-white mb-8 shadow-xl relative overflow-hidden">
@@ -19,8 +26,8 @@ export default function Store({
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">{Icons.Search}</div>
           <input type="text" placeholder="Search for notes..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 outline-none shadow-sm transition" />
         </div>
-        <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0 hide-scrollbar">
-          {['All', 'Physics', 'Chemistry', 'Higher Math', 'Admission Special'].map(cat => (
+        <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0 hide-scrollbar scroll-smooth">
+          {categories.map(cat => (
             <button key={cat} onClick={() => setSelectedCategory(cat)} className={`whitespace-nowrap px-5 py-3 rounded-xl font-bold transition shadow-sm ${selectedCategory === cat ? 'bg-emerald-600 text-white' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}`}>
               {cat}
             </button>
@@ -56,16 +63,9 @@ export default function Store({
                       View Demo PDF
                     </button>
                   )}
-
-                  {product.isFree ? (
-                    <button onClick={() => handleGetFree(product)} disabled={inLibrary} className={`w-full font-bold py-3 rounded-xl shadow transition flex justify-center items-center gap-2 ${inLibrary ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}>
-                      {inLibrary ? '✓ Owned in Library' : '📥 Get for Free'}
-                    </button>
-                  ) : (
-                    <button onClick={() => handleBuyNow(product)} disabled={inLibrary} className={`w-full font-bold py-3 rounded-xl shadow transition flex justify-center items-center gap-2 ${inLibrary ? 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200' : 'bg-emerald-600 hover:bg-emerald-700 text-white'}`}>
-                      {inLibrary ? '✓ Owned in Library' : '💳 Buy Now'}
-                    </button>
-                  )}
+                  <button onClick={() => product.isFree ? handleGetFree(product) : handleBuyNow(product)} disabled={inLibrary} className={`w-full font-bold py-3 rounded-xl shadow transition flex justify-center items-center gap-2 ${inLibrary ? 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200' : (product.isFree ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-emerald-600 hover:bg-emerald-700 text-white')}`}>
+                    {inLibrary ? '✓ Owned in Library' : (product.isFree ? '📥 Get for Free' : '💳 Buy Now')}
+                  </button>
                 </div>
               </div>
             )
