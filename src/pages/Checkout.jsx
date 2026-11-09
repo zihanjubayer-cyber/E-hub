@@ -96,6 +96,7 @@ export default function Checkout({
                    নাম্বারে ঠিক <b className="text-lg text-emerald-700">৳{finalTotal.toFixed(0)}</b> 'Send Money' করুন।
                  </li>
                  <li>২. টাকা পাঠানো হয়ে গেলে, যে নাম্বার থেকে পাঠিয়েছেন সেটি এবং Transaction ID (TrxID) নিচে দিয়ে সাবমিট করুন।</li>
+                <li>অর্ডারটি অ্যাডমিন অ্যাপ্রুভ করার সাথে সাথেই আপনার অ্যাকাউন্টের লাইব্রেরিতে পিডিএফটি যুক্ত হয়ে যাবে।</li>
               </ul>
            </div>
            
