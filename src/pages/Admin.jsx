@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 const Icons = { Lock: <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg> };
 
 export default function Admin({
-  user, isAdmin, pendingCount,
+  user, isAdmin, pendingCount, // 🛑 ব্যাজ প্রপস
   handleLogout, handleLogin, email, setEmail, password, setPassword,
   handleSaveSettings, newBkash, setNewBkash, newNagad, setNewNagad, storeSettings,
   handleAddCoupon, newCoupon, setNewCoupon, coupons, handleDeleteCoupon,
@@ -29,7 +29,7 @@ export default function Admin({
   return (
     <div className="bg-white p-6 md:p-10 rounded-3xl shadow-lg border border-gray-100 max-w-4xl mx-auto animate-fade-in relative overflow-hidden">
       
-      {/* Verify Order Modal */}
+      {/* 🛑 Verify Order Modal */}
       {selectedOrder && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 p-4 animate-fade-in">
           <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-md w-full relative">
@@ -51,7 +51,7 @@ export default function Admin({
         </div>
       )}
 
-      {/* Delete Order Modal */}
+      {/* 🛑 Delete Order Modal */}
       {deleteOrderConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 p-4 animate-fade-in">
            <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-sm w-full relative text-center">
@@ -66,7 +66,7 @@ export default function Admin({
         </div>
       )}
 
-      {/* Delete Coupon Modal */}
+      {/* 🛑 Delete Coupon Modal */}
       {deleteCouponConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 p-4 animate-fade-in">
            <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-sm w-full relative text-center">
@@ -81,7 +81,7 @@ export default function Admin({
         </div>
       )}
 
-      {/* Delete Product Modal */}
+      {/* 🛑 Delete Product Modal */}
       {deleteProductConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 p-4 animate-fade-in">
            <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-sm w-full relative text-center">
@@ -193,6 +193,7 @@ export default function Admin({
           <div>
             <h3 className="font-extrabold text-2xl mb-6 text-gray-900 flex items-center gap-3">
               📦 Recent Orders
+              {/* 🛑 নতুন পেন্ডিং অর্ডার আসলে এখানে লাফানো ব্যাজ দেখাবে */}
               {pendingCount > 0 && (
                 <span className="bg-red-500 text-white text-xs px-3 py-1 rounded-full animate-pulse shadow-md">
                   {pendingCount} New Pending
@@ -244,61 +245,22 @@ export default function Admin({
             )}
           </div>
 
-          {/* Uploaded Notes - Chapter Wise Grouping */}
           <div>
-             <h3 className="font-extrabold text-2xl mb-6 text-gray-900">📚 Uploaded Notes (Chapter-wise)</h3>
-             
-             {categories.map(category => {
-               const categoryProducts = products.filter(p => p.category === category);
-               
-               if (categoryProducts.length === 0) return null;
-
-               return (
-                 <div key={category} className="mb-8 bg-gray-50 p-5 rounded-2xl border border-gray-200">
-                   <h4 className="font-bold text-xl text-emerald-700 mb-4 flex items-center gap-2">
-                     <span className="bg-emerald-100 px-3 py-1 rounded-lg">{category}</span>
-                     <span className="text-sm text-gray-500 bg-white px-2 py-0.5 rounded-full border border-gray-200">{categoryProducts.length} Notes</span>
-                   </h4>
-                   
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                     {categoryProducts.map(p => (
-                       <div key={p.id} className="flex justify-between items-center bg-white border border-gray-200 p-4 rounded-xl shadow-sm hover:border-emerald-300 transition">
-                         <div>
-                           <p className="font-bold text-gray-800 text-lg mb-1">{p.serial === 9999 || !p.serial ? '?' : p.serial}. {p.title}</p>
-                           <p className="text-sm font-black text-emerald-600">{p.isFree ? 'Free' : `৳${p.price}`}</p>
-                         </div>
-                         <div className="flex gap-2">
-                           <button onClick={() => { setNewProduct(p); document.getElementById('product-form').scrollIntoView({ behavior: 'smooth' }); }} className="bg-blue-50 text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-100 font-bold transition">Edit</button>
-                           <button onClick={() => setDeleteProductConfirm(p.id)} className="bg-red-50 text-red-500 px-4 py-2 rounded-lg hover:bg-red-100 font-bold transition">Delete</button>
-                         </div>
-                       </div>
-                     ))}
+             <h3 className="font-extrabold text-2xl mb-6 text-gray-900">📚 Uploaded Notes</h3>
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+               {products.map(p => (
+                 <div key={p.id} className="flex justify-between items-center bg-white border border-gray-200 p-5 rounded-2xl shadow-sm hover:border-gray-300 transition">
+                   <div>
+                     <p className="font-bold text-gray-800 text-lg mb-1">{p.serial === 9999 || !p.serial ? '?' : p.serial}. {p.title}</p>
+                     <p className="text-sm font-black text-emerald-600">{p.isFree ? 'Free' : `৳${p.price}`} <span className="text-xs text-gray-400 font-normal ml-2">{p.category}</span></p>
+                   </div>
+                   <div className="flex gap-2">
+                     <button onClick={() => { setNewProduct(p); document.getElementById('product-form').scrollIntoView({ behavior: 'smooth' }); }} className="bg-blue-50 text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-100 font-bold transition">Edit</button>
+                     <button onClick={() => setDeleteProductConfirm(p.id)} className="bg-red-50 text-red-500 px-4 py-2 rounded-lg hover:bg-red-100 font-bold transition">Delete</button>
                    </div>
                  </div>
-               );
-             })}
-
-             {products.filter(p => !categories.includes(p.category)).length > 0 && (
-               <div className="mb-8 bg-orange-50 p-5 rounded-2xl border border-orange-200">
-                   <h4 className="font-bold text-xl text-orange-700 mb-4 flex items-center gap-2">
-                     <span className="bg-orange-100 px-3 py-1 rounded-lg">Uncategorized / Old Notes</span>
-                   </h4>
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                     {products.filter(p => !categories.includes(p.category)).map(p => (
-                       <div key={p.id} className="flex justify-between items-center bg-white border border-orange-200 p-4 rounded-xl shadow-sm hover:border-orange-300 transition">
-                         <div>
-                           <p className="font-bold text-gray-800 text-lg mb-1">{p.serial === 9999 || !p.serial ? '?' : p.serial}. {p.title}</p>
-                           <p className="text-sm font-black text-emerald-600">{p.isFree ? 'Free' : `৳${p.price}`} <span className="text-xs text-gray-400 font-normal ml-2">{p.category}</span></p>
-                         </div>
-                         <div className="flex gap-2">
-                           <button onClick={() => { setNewProduct(p); document.getElementById('product-form').scrollIntoView({ behavior: 'smooth' }); }} className="bg-blue-50 text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-100 font-bold transition">Edit</button>
-                           <button onClick={() => setDeleteProductConfirm(p.id)} className="bg-red-50 text-red-500 px-4 py-2 rounded-lg hover:bg-red-100 font-bold transition">Delete</button>
-                         </div>
-                       </div>
-                     ))}
-                   </div>
-                 </div>
-             )}
+               ))}
+             </div>
           </div>
 
         </div>
