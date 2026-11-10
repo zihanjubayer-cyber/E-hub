@@ -14,6 +14,9 @@ export default function Admin({
   const [deleteCouponConfirm, setDeleteCouponConfirm] = useState(null);
   const [deleteProductConfirm, setDeleteProductConfirm] = useState(null);
 
+  // 🛑 ফোল্ডার ওপেন/ক্লোজ করার স্টেট
+  const [expandedFolders, setExpandedFolders] = useState({});
+
   const categories = [
     'Physics I', 'Physics II', 
     'Chemistry I', 'Chemistry II', 
@@ -25,14 +28,16 @@ export default function Admin({
   const handleConfirmDeleteCoupon = () => { handleDeleteCoupon(deleteCouponConfirm); setDeleteCouponConfirm(null); }
   const handleConfirmDeleteProduct = () => { handleDeleteProduct(deleteProductConfirm); setDeleteProductConfirm(null); }
 
-  // 🛑 নোটগুলোকে ক্যাটাগরি অনুযায়ী গ্রুপ করা হচ্ছে
+  // 🛑 ফোল্ডারে ক্লিক করার ফাংশন
+  const toggleFolder = (category) => {
+    setExpandedFolders(prev => ({ ...prev, [category]: !prev[category] }));
+  };
+
   const groupedProducts = categories.reduce((acc, cat) => {
     const prods = products.filter(p => p.category === cat);
     if (prods.length > 0) acc[cat] = prods;
     return acc;
   }, {});
-
-  // যদি কোনো নোটের ক্যাটাগরি লিস্টের বাইরে থাকে, সেগুলোকে 'Others' এ রাখা হবে
   const otherProducts = products.filter(p => !categories.includes(p.category));
   if (otherProducts.length > 0) groupedProducts['Others'] = otherProducts;
 
@@ -254,7 +259,7 @@ export default function Admin({
             )}
           </div>
 
-          {/* 🛑 Uploaded Notes - Grouped by Category */}
+          {/* 🛑 Clickable Folders for Uploaded Notes */}
           <div>
              <h3 className="font-extrabold text-2xl mb-6 text-gray-900">📚 Uploaded Notes</h3>
              
@@ -262,25 +267,42 @@ export default function Admin({
                <p className="text-gray-500">No notes uploaded yet.</p>
              ) : (
                Object.keys(groupedProducts).map(category => (
-                 <div key={category} className="mb-8 bg-gray-50 p-5 rounded-3xl border border-gray-200">
-                   <h4 className="font-black text-xl text-emerald-800 mb-4 flex items-center gap-2">
-                     📂 {category} <span className="bg-emerald-100 text-emerald-600 text-sm px-3 py-1 rounded-full">{groupedProducts[category].length}</span>
-                   </h4>
+                 <div key={category} className="mb-4 bg-gray-50 rounded-3xl border border-gray-200 overflow-hidden shadow-sm">
                    
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                     {groupedProducts[category].map(p => (
-                       <div key={p.id} className="flex justify-between items-center bg-white border border-gray-100 p-5 rounded-2xl shadow-sm hover:shadow-md transition">
-                         <div>
-                           <p className="font-bold text-gray-800 text-lg mb-1">{p.serial === 9999 || !p.serial ? '?' : p.serial}. {p.title}</p>
-                           <p className="text-sm font-black text-emerald-600">{p.isFree ? 'Free' : `৳${p.price}`} <span className="text-xs text-gray-400 font-normal ml-2">{p.category}</span></p>
+                   {/* Folder Header (Click to Toggle) */}
+                   <button 
+                     onClick={() => toggleFolder(category)}
+                     className="w-full flex justify-between items-center p-5 md:p-6 bg-white hover:bg-emerald-50 transition"
+                   >
+                     <h4 className="font-black text-xl text-emerald-800 flex items-center gap-3">
+                       {expandedFolders[category] ? '📂' : '📁'} {category} 
+                       <span className="bg-emerald-100 text-emerald-700 text-sm px-3 py-1 rounded-full border border-emerald-200">
+                         {groupedProducts[category].length} Notes
+                       </span>
+                     </h4>
+                     <span className={`text-emerald-500 font-bold transform transition-transform duration-300 ${expandedFolders[category] ? 'rotate-180' : ''}`}>
+                       ▼
+                     </span>
+                   </button>
+                   
+                   {/* Folder Content (Notes Grid) */}
+                   {expandedFolders[category] && (
+                     <div className="p-5 md:p-6 grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-gray-100 bg-gray-50">
+                       {groupedProducts[category].map(p => (
+                         <div key={p.id} className="flex justify-between items-center bg-white border border-gray-100 p-5 rounded-2xl shadow-sm hover:shadow-md transition">
+                           <div>
+                             <p className="font-bold text-gray-800 text-lg mb-1">{p.serial === 9999 || !p.serial ? '?' : p.serial}. {p.title}</p>
+                             <p className="text-sm font-black text-emerald-600">{p.isFree ? 'Free' : `৳${p.price}`} <span className="text-xs text-gray-400 font-normal ml-2">{p.category}</span></p>
+                           </div>
+                           <div className="flex gap-2">
+                             <button onClick={() => { setNewProduct(p); document.getElementById('product-form').scrollIntoView({ behavior: 'smooth' }); }} className="bg-blue-50 text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-100 font-bold transition">Edit</button>
+                             <button onClick={() => setDeleteProductConfirm(p.id)} className="bg-red-50 text-red-500 px-4 py-2 rounded-lg hover:bg-red-100 font-bold transition">Delete</button>
+                           </div>
                          </div>
-                         <div className="flex gap-2">
-                           <button onClick={() => { setNewProduct(p); document.getElementById('product-form').scrollIntoView({ behavior: 'smooth' }); }} className="bg-blue-50 text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-100 font-bold transition">Edit</button>
-                           <button onClick={() => setDeleteProductConfirm(p.id)} className="bg-red-50 text-red-500 px-4 py-2 rounded-lg hover:bg-red-100 font-bold transition">Delete</button>
-                         </div>
-                       </div>
-                     ))}
-                   </div>
+                       ))}
+                     </div>
+                   )}
+                   
                  </div>
                ))
              )}
