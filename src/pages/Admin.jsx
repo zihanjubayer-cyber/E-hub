@@ -51,6 +51,8 @@ export default function Admin({
                 <p><span className="font-bold text-gray-600">Title:</span> <span className="text-emerald-700 font-bold text-base">{selectedOrder.product?.title}</span></p>
                 <p><span className="font-bold text-gray-600">Category:</span> {selectedOrder.product?.category}</p>
                 {selectedOrder.product?.writer && <p><span className="font-bold text-gray-600">Writer:</span> {selectedOrder.product?.writer}</p>}
+                {/* 🛑 Book Edition যুক্ত করা হলো */}
+                {selectedOrder.product?.edition && <p><span className="font-bold text-gray-600">Edition:</span> {selectedOrder.product?.edition}</p>}
                 <p><span className="font-bold text-gray-600">Original Price:</span> ৳{selectedOrder.product?.price}</p>
               </div>
 
