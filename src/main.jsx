@@ -1,165 +1,211 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { createRoot } from 'react-dom/client';
+import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from 'firebase/auth';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, getDoc, setDoc } from 'firebase/firestore';
+import { auth, db } from './config/firebase';
 
-export default function Home({ products, setActiveTab, setSearchTerm, setSelectedCategory }) {
-  const [localSearch, setLocalSearch] = useState('');
+import Navbar from './components/Navbar';
+import Footer from './components/Footer';
+import Home from './pages/Home';
+import Store from './pages/Store';
+import Checkout from './pages/Checkout';
+import Library from './pages/Library';
+import Admin from './pages/Admin';
+import Auth from './pages/Auth'; 
+import PdfViewer from './components/PdfViewer';
 
-  // 🛑 সার্চ বা ক্লিক করলে সরাসরি স্টোরে ফিল্টার হয়ে যাবে
-  const handleSmartSearch = (term, category = 'All') => {
-    setSearchTerm(term);
-    setSelectedCategory(category);
-    setActiveTab('store');
-  };
+const ADMIN_EMAILS = ['zihanjubayer@gmail.com', 'talhajubayer312@gmail.com']; 
 
-  const handleSearchSubmit = (e) => {
-    e.preventDefault();
-    if(localSearch.trim()) handleSmartSearch(localSearch);
-  };
+function App() {
+  const [activeTab, setActiveTab] = useState('home'); 
+  const [products, setProducts] = useState([]);
+  const [checkoutItem, setCheckoutItem] = useState(null); 
+  const [library, setLibrary] = useState([]); 
+  const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState(null);
 
-  // 🛑 ডেটাবেস থেকে সকল ইউনিক ডেটা বের করা হচ্ছে (কোনো লিমিট নেই, সবগুলো পিডিএফ শো করবে)
-  const categoriesList = [...new Set(products.map(p => p.category).filter(Boolean))];
-  const chapters = [...new Set(products.map(p => p.title).filter(Boolean))]; 
-  const writers = [...new Set(products.map(p => p.writer).filter(Boolean))];
-  const targets = [...new Set(products.map(p => p.target).filter(Boolean))];
-  const editions = [...new Set(products.map(p => p.edition).filter(Boolean))];
+  // 🛑 নতুন অ্যাডভান্সড ফিল্টার স্টেট
+  const [searchTerm, setSearchTerm] = useState('');
+  const [advancedFilters, setAdvancedFilters] = useState({
+    subject: 'All', chapter: 'All', writer: 'All', edition: 'All'
+  });
+
+  const [storeSettings, setStoreSettings] = useState({ bkashNumber: '01XXXXXXXXX', nagadNumber: '01XXXXXXXXX' });
+  const [coupons, setCoupons] = useState([]);
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
+  const [couponInput, setCouponInput] = useState('');
+  const [newCoupon, setNewCoupon] = useState({ code: '', discount: '' });
   
-  const recentNotes = [...products].reverse().slice(0, 3);
+  const [user, setUser] = useState(null);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [orders, setOrders] = useState([]);
+  
+  const [newProduct, setNewProduct] = useState({ 
+    serial: 1, title: '', price: '', category: 'Physics I', writer: '', 
+    edition: '', pages: '', size: '', target: '', 
+    description: '', demoLink: '', mainLink: '', isFree: false 
+  });
+  
+  const [newBkash, setNewBkash] = useState('');
+  const [newNagad, setNewNagad] = useState('');
+
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [currentPdfUrl, setCurrentPdfUrl] = useState('');
+  const [currentTitle, setCurrentTitle] = useState('');
+
+  const isAdmin = user && ADMIN_EMAILS.includes(user.email);
+
+  const openPdf = (url, title) => { setCurrentPdfUrl(url); setCurrentTitle(title); setViewerOpen(true); };
+  const showToast = (message, type = 'success') => { setToast({ message, type }); setTimeout(() => setToast(null), 3000); };
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const prodSnap = await getDocs(collection(db, "products"));
+      const fetchedProducts = prodSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      fetchedProducts.sort((a, b) => (Number(a.serial) || 9999) - (Number(b.serial) || 9999));
+      setProducts(fetchedProducts);
+      
+      const settingsDoc = await getDoc(doc(db, "settings", "store"));
+      if (settingsDoc.exists()) {
+        const data = settingsDoc.data();
+        setStoreSettings(data); setNewBkash(data.bkashNumber || ''); setNewNagad(data.nagadNumber || '');
+      }
+      const couponSnap = await getDocs(collection(db, "coupons"));
+      setCoupons(couponSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    } catch (error) {}
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchData();
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      setUser(currentUser);
+      if (currentUser) {
+        if (ADMIN_EMAILS.includes(currentUser.email)) fetchOrders();
+        else {
+          const userDoc = await getDoc(doc(db, "users", currentUser.uid));
+          if (userDoc.exists()) setLibrary(userDoc.data().library || []);
+          else setLibrary([]);
+        }
+      } else setLibrary([]);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const fetchOrders = async () => {
+    const querySnapshot = await getDocs(collection(db, "orders"));
+    const fetchedOrders = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    fetchedOrders.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    setOrders(fetchedOrders);
+  };
+
+  const handleLogin = async (e) => { 
+    e.preventDefault();
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      if (ADMIN_EMAILS.includes(userCredential.user.email)) { showToast('Successfully logged in as Admin!'); setActiveTab('admin'); } 
+      else { showToast('Access Denied!', 'error'); signOut(auth); }
+    } catch (error) { showToast('Login failed!', 'error'); }
+  };
+  const handleLogout = () => { signOut(auth); showToast('Logged out'); setActiveTab('home'); };
+
+  const handleAddProduct = async (e) => {
+    e.preventDefault();
+    try {
+      const productData = { ...newProduct, serial: Number(newProduct.serial) || 9999, price: newProduct.isFree ? 0 : Number(newProduct.price) };
+      if (newProduct.id) { await updateDoc(doc(db, "products", newProduct.id), productData); showToast("Product updated!"); } 
+      else { await addDoc(collection(db, "products"), productData); showToast("Product added!"); }
+      setNewProduct({ serial: 1, title: '', price: '', category: 'Physics I', writer: '', edition: '', pages: '', size: '', target: '', description: '', demoLink: '', mainLink: '', isFree: false });
+      fetchData();
+    } catch (error) {}
+  };
+
+  const handleDeleteProduct = async (id) => { if(window.confirm("Delete this note?")) { await deleteDoc(doc(db, "products", id)); showToast("Deleted!"); fetchData(); } };
+
+  const handleSaveSettings = async (e) => { e.preventDefault(); await setDoc(doc(db, "settings", "store"), { bkashNumber: newBkash, nagadNumber: newNagad }); setStoreSettings({ bkashNumber: newBkash, nagadNumber: newNagad }); showToast("Payment numbers updated!"); };
+
+  const handleAddCoupon = async (e) => { e.preventDefault(); await addDoc(collection(db, "coupons"), { code: newCoupon.code.toUpperCase(), discount: Number(newCoupon.discount) }); showToast("Coupon added successfully!"); setNewCoupon({ code: '', discount: '' }); fetchData(); };
+
+  const handleDeleteCoupon = async (id) => { if(window.confirm("Are you sure you want to remove this coupon?")) { await deleteDoc(doc(db, "coupons", id)); showToast("Coupon removed!"); fetchData(); } };
+
+  const applyCoupon = () => {
+    if (!couponInput) { showToast("Please enter a coupon code", 'error'); return; }
+    const validCoupon = coupons.find(c => c.code === couponInput.toUpperCase());
+    if (validCoupon) { setAppliedCoupon(validCoupon); showToast(`${validCoupon.discount}% Discount Applied!`); } else { showToast("Invalid or expired coupon!", 'error'); setAppliedCoupon(null); }
+  };
+
+  const removeCoupon = () => { setAppliedCoupon(null); setCouponInput(''); showToast("Coupon removed"); };
+
+  const handleBuyNow = (product) => {
+    if (!user) { showToast('Please login to purchase notes!', 'error'); setActiveTab('auth'); return; }
+    setCheckoutItem(product); setActiveTab('checkout'); setAppliedCoupon(null); setCouponInput('');
+  };
+
+  const handleCheckout = async (e) => {
+    e.preventDefault();
+    const finalTotal = appliedCoupon ? checkoutItem.price - (checkoutItem.price * (appliedCoupon.discount / 100)) : checkoutItem.price;
+    try {
+      await addDoc(collection(db, "orders"), { userId: user.uid, phone: e.target.phone.value, trxId: e.target.trxId.value, paymentMethod: e.target.paymentMethod.value, product: checkoutItem, totalPaid: finalTotal, status: 'Pending', timestamp: new Date().toISOString() });
+      showToast('Order submitted successfully!'); setCheckoutItem(null); setAppliedCoupon(null); setCouponInput(''); setActiveTab('library');
+    } catch (error) { showToast('Error submitting order', 'error'); }
+  };
+
+  const handleGetFree = async (product) => { 
+    if (!user) { showToast('Please login first!', 'error'); setActiveTab('auth'); return; }
+    if(!library.find(item => item.id === product.id)) {
+      const newLibrary = [...library, product]; setLibrary(newLibrary);
+      await setDoc(doc(db, "users", user.uid), { library: newLibrary }, { merge: true }); showToast('Free note added!');
+    }
+  };
+
+  const handleApproveOrder = async (orderId, orderProduct, orderUserId) => {
+    try {
+      await updateDoc(doc(db, "orders", orderId), { status: 'Approved' });
+      if (orderUserId && orderProduct) {
+        const userRef = doc(db, "users", orderUserId); const userSnap = await getDoc(userRef); let currentLib = userSnap.exists() ? (userSnap.data().library || []) : [];
+        if (!currentLib.find(l => l.id === orderProduct.id)) { await setDoc(userRef, { library: [...currentLib, orderProduct] }, { merge: true }); }
+      }
+      showToast('Order Approved & Sent to Student!'); fetchOrders();
+    } catch (error) { showToast('Error approving order', 'error'); }
+  };
+
+  const handleDeleteOrder = async (orderId) => { if(window.confirm("Are you sure?")) { try { await deleteDoc(doc(db, "orders", orderId)); showToast("Order deleted!"); fetchOrders(); } catch (error) { showToast('Error deleting order', 'error'); } } };
+
+  // 🛑 অ্যাডভান্সড স্মার্ট ফিল্টারিং লজিক
+  const filteredProducts = products.filter(p => {
+    const matchSearch = searchTerm === '' || [p.title, p.writer, p.edition, p.target, p.category, p.description].some(val => val && val.toLowerCase().includes(searchTerm.toLowerCase()));
+    const matchSubject = advancedFilters.subject === 'All' || p.category === advancedFilters.subject;
+    const matchChapter = advancedFilters.chapter === 'All' || p.title === advancedFilters.chapter;
+    const matchWriter = advancedFilters.writer === 'All' || p.writer === advancedFilters.writer;
+    const matchEdition = advancedFilters.edition === 'All' || p.edition === advancedFilters.edition;
+    
+    return matchSearch && matchSubject && matchChapter && matchWriter && matchEdition;
+  });
 
   return (
-    <div className="animate-fade-in space-y-12 pb-10">
+    <div className="min-h-screen bg-gray-50 text-gray-800 font-sans relative flex flex-col">
+      {toast && <div className={`fixed top-20 right-5 px-6 py-3 rounded-xl shadow-2xl z-50 text-white font-semibold transition-all ${toast.type === 'error' ? 'bg-red-500' : 'bg-emerald-600'}`}>{toast.message}</div>}
+      <Navbar activeTab={activeTab} setActiveTab={setActiveTab} user={user} handleLogout={handleLogout} />
       
-      {/* 1. Hero Section */}
-      <div className="bg-gray-900 rounded-[2.5rem] p-8 md:p-16 text-center text-white shadow-2xl relative overflow-hidden flex flex-col items-center justify-center min-h-[400px]">
-         <div className="absolute inset-0 bg-gradient-to-br from-emerald-900/80 via-gray-900 to-teal-900/80"></div>
-         <div className="absolute top-0 left-0 w-full h-full opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
-         
-         <div className="relative z-10 space-y-6 w-full max-w-3xl">
-             <span className="bg-emerald-500/20 text-emerald-300 font-bold px-5 py-2 rounded-full text-sm tracking-wider uppercase border border-emerald-500/30">
-               HSC & Admission Solutions
-             </span>
-             <h2 className="text-4xl md:text-6xl font-black leading-tight text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-300">
-                দেশের সেরা <span className="text-emerald-400">ডিজিটাল নোট</span> আর্কাইভ
-             </h2>
-             <p className="text-gray-300 text-lg md:text-xl">বোর্ড স্ট্যান্ডার্ড ১০০% নির্ভুল সমাধান। বিষয়, রাইটার বা টার্গেট লিখে সার্চ করো!</p>
-             
-             <form onSubmit={handleSearchSubmit} className="flex flex-col md:flex-row gap-3 mt-8">
-               <input type="text" placeholder="কী খুঁজছো? (যেমন: Physics, Giasuddin...)" value={localSearch} onChange={e => setLocalSearch(e.target.value)} className="w-full p-4 md:p-5 rounded-2xl text-gray-900 font-bold outline-none shadow-lg focus:ring-4 focus:ring-emerald-500/50 text-lg"/>
-               <button type="submit" className="bg-emerald-500 text-gray-900 px-8 py-4 md:py-5 rounded-2xl font-black text-lg hover:bg-emerald-400 transition shadow-lg shrink-0">Search 🚀</button>
-             </form>
-         </div>
-      </div>
-
-      {/* 2. Floating Trust Badges */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl mx-auto -mt-16 relative z-20 px-4">
-         <div className="bg-white p-5 rounded-2xl shadow-xl border border-gray-100 flex items-center justify-center gap-3 transform hover:-translate-y-1 transition">
-            <span className="text-3xl">✅</span>
-            <h4 className="font-extrabold text-gray-800 text-lg">১০০% নির্ভুল</h4>
-         </div>
-         <div className="bg-white p-5 rounded-2xl shadow-xl border border-gray-100 flex items-center justify-center gap-3 transform hover:-translate-y-1 transition">
-            <span className="text-3xl">⚡</span>
-            <h4 className="font-extrabold text-gray-800 text-lg">ইনস্ট্যান্ট ডেলিভারি</h4>
-         </div>
-         <div className="bg-white p-5 rounded-2xl shadow-xl border border-gray-100 flex items-center justify-center gap-3 transform hover:-translate-y-1 transition">
-            <span className="text-3xl">📱</span>
-            <h4 className="font-extrabold text-gray-800 text-lg">মোবাইল ফ্রেন্ডলি</h4>
-         </div>
-      </div>
-
-      {/* 🛑 3. Subjects / Categories Folder (New!) */}
-      {categoriesList.length > 0 && (
-        <div>
-          <h3 className="font-black text-2xl text-gray-900 mb-6 border-l-4 border-emerald-500 pl-3">বিষয়সমূহ 📂</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {categoriesList.map((cat, idx) => (
-              <button key={cat} onClick={() => handleSmartSearch('', cat)} className={`text-left p-6 rounded-3xl shadow-sm hover:shadow-md transition-all transform hover:-translate-y-1 group bg-gradient-to-br ${['from-emerald-50 to-teal-50 border-emerald-100', 'from-blue-50 to-indigo-50 border-blue-100', 'from-orange-50 to-red-50 border-orange-100', 'from-fuchsia-50 to-pink-50 border-fuchsia-100'][idx % 4]} border`}>
-                <h4 className="font-extrabold text-gray-800 text-xl group-hover:text-emerald-800 leading-tight">{cat}</h4>
-                <p className="text-sm text-gray-500 mt-2 font-semibold">সব নোট দেখুন &rarr;</p>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* 🛑 4. All Chapters (No Limit) */}
-      {chapters.length > 0 && (
-        <div>
-          <h3 className="font-black text-2xl text-gray-900 mb-6 border-l-4 border-emerald-500 pl-3">সকল অধ্যায় 📑</h3>
-          <div className="flex flex-wrap gap-3">
-            {chapters.map(c => (
-              <button key={c} onClick={() => handleSmartSearch(c)} className="bg-white border border-gray-200 text-gray-700 px-5 py-2.5 rounded-xl font-bold hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300 transition shadow-sm">
-                {c}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* 🛑 5. Popular Writers */}
-      {writers.length > 0 && (
-        <div>
-          <h3 className="font-black text-2xl text-gray-900 mb-6 border-l-4 border-emerald-500 pl-3">জনপ্রিয় রাইটার ✍️</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {writers.map((w, idx) => (
-              <button key={w} onClick={() => handleSmartSearch(w)} className="bg-white border border-gray-100 p-6 rounded-3xl shadow-sm hover:shadow-lg hover:border-emerald-200 transition text-center group flex flex-col items-center justify-center gap-4">
-                <div className={`w-16 h-16 rounded-full flex items-center justify-center text-3xl transition-transform group-hover:scale-110 ${['bg-blue-100 text-blue-500', 'bg-orange-100 text-orange-500', 'bg-purple-100 text-purple-500', 'bg-pink-100 text-pink-500'][idx % 4]}`}>
-                  👨‍🏫
-                </div>
-                <span className="font-extrabold text-gray-700 group-hover:text-emerald-600 text-lg">{w}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* 🛑 6. Target & Edition */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-6">
-         {targets.length > 0 && (
-           <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
-             <h3 className="font-black text-xl text-gray-900 mb-5">টার্গেট ব্যাচ 🎯</h3>
-             <div className="flex flex-wrap gap-3">
-               {targets.map(t => (
-                 <button key={t} onClick={() => handleSmartSearch(t)} className="bg-purple-50 text-purple-700 border border-purple-200 px-6 py-3 rounded-xl font-bold hover:bg-purple-600 hover:text-white transition shadow-sm text-lg">{t}</button>
-               ))}
-             </div>
-           </div>
-         )}
-         {editions.length > 0 && (
-           <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
-             <h3 className="font-black text-xl text-gray-900 mb-5">বইয়ের এডিশন 📅</h3>
-             <div className="flex flex-wrap gap-3">
-               {editions.map(e => (
-                 <button key={e} onClick={() => handleSmartSearch(e)} className="bg-blue-50 text-blue-700 border border-blue-200 px-6 py-3 rounded-xl font-bold hover:bg-blue-600 hover:text-white transition shadow-sm text-lg">{e}</button>
-               ))}
-             </div>
-           </div>
-         )}
-      </div>
-
-      {/* 7. Recent Notes */}
-      {recentNotes.length > 0 && (
-        <div className="mt-12 bg-gray-900 rounded-[2rem] p-8 md:p-12 shadow-xl">
-          <div className="flex justify-between items-end mb-8">
-            <div>
-              <h3 className="font-black text-3xl text-white mb-2">🔥 লেটেস্ট নোটসমূহ</h3>
-              <p className="text-gray-400">সদ্য আপলোড করা সেরা ম্যাটেরিয়ালগুলো</p>
-            </div>
-            <button onClick={() => setActiveTab('store')} className="hidden md:block bg-emerald-500 text-gray-900 px-6 py-3 rounded-xl font-bold hover:bg-emerald-400 transition shadow-lg">Go to Store</button>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {recentNotes.map(p => (
-              <div key={p.id} className="bg-gray-800 p-6 rounded-3xl border border-gray-700 hover:border-emerald-500 hover:shadow-[0_0_20px_rgba(16,185,129,0.2)] transition-all cursor-pointer transform hover:-translate-y-1" onClick={() => handleSmartSearch(p.title)}>
-                <span className="text-xs font-black text-emerald-900 bg-emerald-400 px-3 py-1.5 rounded-full uppercase mb-4 inline-block">{p.category}</span>
-                <h4 className="font-extrabold text-2xl text-white mb-2 leading-tight">{p.title}</h4>
-                <p className="text-gray-400 text-sm mb-6">{p.writer ? `✍️ ${p.writer}` : 'Premium Note'}</p>
-                <div className="flex justify-between items-center border-t border-gray-700 pt-4 mt-auto">
-                   <p className="text-emerald-400 font-black text-2xl">{p.isFree ? 'FREE' : `৳${p.price}`}</p>
-                   <span className="text-gray-500 font-bold hover:text-white transition">View &rarr;</span>
-                </div>
-              </div>
-            ))}
-          </div>
-          <button onClick={() => setActiveTab('store')} className="md:hidden w-full mt-6 bg-emerald-500 text-gray-900 px-6 py-4 rounded-xl font-black text-lg hover:bg-emerald-400 transition">Go to Store 🚀</button>
-        </div>
-      )}
+      <main className="flex-grow max-w-5xl mx-auto p-4 md:p-6 w-full mb-10">
+        
+        {/* 🛑 Home এবং Store-এ advancedFilters পাস করা হলো */}
+        {activeTab === 'home' && <Home products={products} setActiveTab={setActiveTab} advancedFilters={advancedFilters} setAdvancedFilters={setAdvancedFilters} />}
+        
+        {activeTab === 'store' && <Store searchTerm={searchTerm} setSearchTerm={setSearchTerm} advancedFilters={advancedFilters} setAdvancedFilters={setAdvancedFilters} loading={loading} filteredProducts={filteredProducts} library={library} handleGetFree={handleGetFree} handleBuyNow={handleBuyNow} showToast={showToast} openPdf={openPdf} />}
+        
+        {activeTab === 'checkout' && <Checkout checkoutItem={checkoutItem} setActiveTab={setActiveTab} couponInput={couponInput} setCouponInput={setCouponInput} applyCoupon={applyCoupon} appliedCoupon={appliedCoupon} removeCoupon={removeCoupon} storeSettings={storeSettings} handleCheckout={handleCheckout} />}
+        {activeTab === 'library' && <Library library={library} openPdf={openPdf} />}
+        {activeTab === 'admin' && <Admin isAdmin={isAdmin} user={user} handleLogout={handleLogout} handleLogin={handleLogin} email={email} setEmail={setEmail} password={password} setPassword={setPassword} handleSaveSettings={handleSaveSettings} newBkash={newBkash} setNewBkash={setNewBkash} newNagad={newNagad} setNewNagad={setNewNagad} storeSettings={storeSettings} handleAddCoupon={handleAddCoupon} newCoupon={newCoupon} setNewCoupon={setNewCoupon} coupons={coupons} handleDeleteCoupon={handleDeleteCoupon} handleAddProduct={handleAddProduct} newProduct={newProduct} setNewProduct={setNewProduct} orders={orders} handleApproveOrder={handleApproveOrder} handleDeleteOrder={handleDeleteOrder} products={products} handleDeleteProduct={handleDeleteProduct} />}
+        {activeTab === 'auth' && <Auth showToast={showToast} setActiveTab={setActiveTab} />}
+      </main>
+      
+      <Footer />
+      <PdfViewer isOpen={viewerOpen} onClose={() => setViewerOpen(false)} pdfUrl={currentPdfUrl} title={currentTitle} />
     </div>
   );
 }
+const rootElement = document.getElementById('root');
+if (rootElement) { createRoot(rootElement).render(<App />); }
