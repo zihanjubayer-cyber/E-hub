@@ -8,10 +8,23 @@ export default function Store({
   handleGetFree, handleBuyNow, openPdf 
 }) {
   
+  // 🛑 আগের ক্যাটাগরি লিস্ট ফিরিয়ে আনা হলো
+  const categories = [
+    'All', 'Physics I', 'Physics II', 
+    'Chemistry I', 'Chemistry II', 
+    'Higher Math I', 'Higher Math II', 
+    'Admission Special', 'Full Book Solution Bundle'
+  ];
+
   // 🛑 ফিল্টার এবং সার্চ রিসেট করার ফাংশন
   const handleReset = () => {
     setSearchTerm('');
     setAdvancedFilters({ subject: 'All', chapter: 'All', writer: 'All', edition: 'All' });
+  };
+
+  // 🛑 কুইক ক্যাটাগরি বাটন ক্লিক করার ফাংশন
+  const handleCategoryClick = (cat) => {
+    setAdvancedFilters(prev => ({ ...prev, subject: cat, chapter: 'All' }));
   };
 
   const hasActiveFilters = advancedFilters.subject !== 'All' || advancedFilters.chapter !== 'All' || advancedFilters.writer !== 'All' || advancedFilters.edition !== 'All';
@@ -36,16 +49,28 @@ export default function Store({
       )}
 
       {/* 🛑 Search Bar with Permanent Reset Button */}
-      <div className="relative mb-8 max-w-3xl mx-auto flex gap-3">
+      <div className="relative mb-6 max-w-4xl mx-auto flex gap-3">
          <div className="relative flex-1">
            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">{Icons.Search}</div>
            <input type="text" placeholder="Quick search directly here..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-12 pr-4 py-4 rounded-2xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 outline-none shadow-sm transition font-semibold text-gray-800" />
          </div>
          
-         {/* Reset Button */}
          <button onClick={handleReset} className="bg-white text-gray-600 hover:bg-red-50 hover:text-red-500 hover:border-red-200 border border-gray-200 px-6 py-4 rounded-2xl font-bold transition flex items-center gap-2 shadow-sm whitespace-nowrap active:scale-95">
            🔄 Reset
          </button>
+      </div>
+
+      {/* 🛑 Quick Category Buttons (আগের মতো ফিরিয়ে আনা হলো) */}
+      <div className="flex gap-2 overflow-x-auto pb-4 mb-6 hide-scrollbar scroll-smooth">
+        {categories.map(cat => (
+          <button 
+            key={cat} 
+            onClick={() => handleCategoryClick(cat)} 
+            className={`whitespace-nowrap px-6 py-3 rounded-xl font-bold transition shadow-sm border ${advancedFilters.subject === cat ? 'bg-emerald-600 text-white border-emerald-700' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
+          >
+            {cat}
+          </button>
+        ))}
       </div>
 
       {loading ? (
