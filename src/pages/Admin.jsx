@@ -25,9 +25,21 @@ export default function Admin({
   const handleConfirmDeleteCoupon = () => { handleDeleteCoupon(deleteCouponConfirm); setDeleteCouponConfirm(null); }
   const handleConfirmDeleteProduct = () => { handleDeleteProduct(deleteProductConfirm); setDeleteProductConfirm(null); }
 
+  // 🛑 নোটগুলোকে ক্যাটাগরি অনুযায়ী গ্রুপ করা হচ্ছে
+  const groupedProducts = categories.reduce((acc, cat) => {
+    const prods = products.filter(p => p.category === cat);
+    if (prods.length > 0) acc[cat] = prods;
+    return acc;
+  }, {});
+
+  // যদি কোনো নোটের ক্যাটাগরি লিস্টের বাইরে থাকে, সেগুলোকে 'Others' এ রাখা হবে
+  const otherProducts = products.filter(p => !categories.includes(p.category));
+  if (otherProducts.length > 0) groupedProducts['Others'] = otherProducts;
+
   return (
     <div className="bg-white p-6 md:p-10 rounded-3xl shadow-lg border border-gray-100 max-w-4xl mx-auto animate-fade-in relative overflow-hidden">
       
+      {/* Verify Order Modal */}
       {selectedOrder && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 p-4 animate-fade-in">
           <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-md w-full relative">
@@ -49,6 +61,7 @@ export default function Admin({
         </div>
       )}
 
+      {/* Delete Modals */}
       {deleteOrderConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 p-4 animate-fade-in">
            <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-sm w-full relative text-center">
@@ -174,7 +187,6 @@ export default function Admin({
                 <input type="number" placeholder="Price ৳" required={!newProduct.isFree} disabled={newProduct.isFree} value={newProduct.price} onChange={e => setNewProduct({...newProduct, price: e.target.value})} className="border border-gray-300 p-4 rounded-xl w-1/2 outline-none disabled:bg-gray-100"/>
               </div>
 
-              {/* 🛑 নতুন ৪টি ইনপুট ফিল্ড: Edition, Target, Pages, Size */}
               <div className="flex gap-4 md:col-span-2">
                 <input type="text" placeholder="Book Edition (e.g. 2024-25)" value={newProduct.edition} onChange={e => setNewProduct({...newProduct, edition: e.target.value})} className="border border-blue-200 bg-blue-50 p-4 rounded-xl w-1/2 outline-none focus:ring-2 focus:ring-blue-400 placeholder-blue-400"/>
                 <input type="text" placeholder="Target (e.g. HSC 26/27)" value={newProduct.target} onChange={e => setNewProduct({...newProduct, target: e.target.value})} className="border border-purple-200 bg-purple-50 p-4 rounded-xl w-1/2 outline-none focus:ring-2 focus:ring-purple-400 placeholder-purple-400"/>
@@ -242,22 +254,36 @@ export default function Admin({
             )}
           </div>
 
+          {/* 🛑 Uploaded Notes - Grouped by Category */}
           <div>
              <h3 className="font-extrabold text-2xl mb-6 text-gray-900">📚 Uploaded Notes</h3>
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-               {products.map(p => (
-                 <div key={p.id} className="flex justify-between items-center bg-white border border-gray-200 p-5 rounded-2xl shadow-sm hover:border-gray-300 transition">
-                   <div>
-                     <p className="font-bold text-gray-800 text-lg mb-1">{p.serial === 9999 || !p.serial ? '?' : p.serial}. {p.title}</p>
-                     <p className="text-sm font-black text-emerald-600">{p.isFree ? 'Free' : `৳${p.price}`} <span className="text-xs text-gray-400 font-normal ml-2">{p.category}</span></p>
-                   </div>
-                   <div className="flex gap-2">
-                     <button onClick={() => { setNewProduct(p); document.getElementById('product-form').scrollIntoView({ behavior: 'smooth' }); }} className="bg-blue-50 text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-100 font-bold transition">Edit</button>
-                     <button onClick={() => setDeleteProductConfirm(p.id)} className="bg-red-50 text-red-500 px-4 py-2 rounded-lg hover:bg-red-100 font-bold transition">Delete</button>
+             
+             {Object.keys(groupedProducts).length === 0 ? (
+               <p className="text-gray-500">No notes uploaded yet.</p>
+             ) : (
+               Object.keys(groupedProducts).map(category => (
+                 <div key={category} className="mb-8 bg-gray-50 p-5 rounded-3xl border border-gray-200">
+                   <h4 className="font-black text-xl text-emerald-800 mb-4 flex items-center gap-2">
+                     📂 {category} <span className="bg-emerald-100 text-emerald-600 text-sm px-3 py-1 rounded-full">{groupedProducts[category].length}</span>
+                   </h4>
+                   
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                     {groupedProducts[category].map(p => (
+                       <div key={p.id} className="flex justify-between items-center bg-white border border-gray-100 p-5 rounded-2xl shadow-sm hover:shadow-md transition">
+                         <div>
+                           <p className="font-bold text-gray-800 text-lg mb-1">{p.serial === 9999 || !p.serial ? '?' : p.serial}. {p.title}</p>
+                           <p className="text-sm font-black text-emerald-600">{p.isFree ? 'Free' : `৳${p.price}`} <span className="text-xs text-gray-400 font-normal ml-2">{p.category}</span></p>
+                         </div>
+                         <div className="flex gap-2">
+                           <button onClick={() => { setNewProduct(p); document.getElementById('product-form').scrollIntoView({ behavior: 'smooth' }); }} className="bg-blue-50 text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-100 font-bold transition">Edit</button>
+                           <button onClick={() => setDeleteProductConfirm(p.id)} className="bg-red-50 text-red-500 px-4 py-2 rounded-lg hover:bg-red-100 font-bold transition">Delete</button>
+                         </div>
+                       </div>
+                     ))}
                    </div>
                  </div>
-               ))}
-             </div>
+               ))
+             )}
           </div>
 
         </div>
