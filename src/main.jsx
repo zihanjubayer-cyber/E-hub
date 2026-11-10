@@ -24,11 +24,8 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
 
-  // 🛑 নতুন অ্যাডভান্সড ফিল্টার স্টেট
   const [searchTerm, setSearchTerm] = useState('');
-  const [advancedFilters, setAdvancedFilters] = useState({
-    subject: 'All', chapter: 'All', writer: 'All', edition: 'All'
-  });
+  const [advancedFilters, setAdvancedFilters] = useState({ subject: 'All', chapter: 'All', writer: 'All', edition: 'All' });
 
   const [storeSettings, setStoreSettings] = useState({ bkashNumber: '01XXXXXXXXX', nagadNumber: '01XXXXXXXXX' });
   const [coupons, setCoupons] = useState([]);
@@ -122,20 +119,25 @@ function App() {
     } catch (error) {}
   };
 
-  const handleDeleteProduct = async (id) => { if(window.confirm("Delete this note?")) { await deleteDoc(doc(db, "products", id)); showToast("Deleted!"); fetchData(); } };
+  // 🛑 ব্রাউজারের ডিফল্ট উইন্ডো কনফার্ম মুছে দেওয়া হয়েছে
+  const handleDeleteProduct = async (id) => { 
+    try { await deleteDoc(doc(db, "products", id)); showToast("Deleted!"); fetchData(); } catch(err) { showToast("Error!", "error"); }
+  };
 
   const handleSaveSettings = async (e) => { e.preventDefault(); await setDoc(doc(db, "settings", "store"), { bkashNumber: newBkash, nagadNumber: newNagad }); setStoreSettings({ bkashNumber: newBkash, nagadNumber: newNagad }); showToast("Payment numbers updated!"); };
 
-  const handleAddCoupon = async (e) => { e.preventDefault(); await addDoc(collection(db, "coupons"), { code: newCoupon.code.toUpperCase(), discount: Number(newCoupon.discount) }); showToast("Coupon added successfully!"); setNewCoupon({ code: '', discount: '' }); fetchData(); };
+  const handleAddCoupon = async (e) => { e.preventDefault(); await addDoc(collection(db, "coupons"), { code: newCoupon.code.toUpperCase(), discount: Number(newCoupon.discount) }); showToast("Coupon added!"); setNewCoupon({ code: '', discount: '' }); fetchData(); };
 
-  const handleDeleteCoupon = async (id) => { if(window.confirm("Are you sure you want to remove this coupon?")) { await deleteDoc(doc(db, "coupons", id)); showToast("Coupon removed!"); fetchData(); } };
+  // 🛑 ব্রাউজারের ডিফল্ট উইন্ডো কনফার্ম মুছে দেওয়া হয়েছে
+  const handleDeleteCoupon = async (id) => { 
+    try { await deleteDoc(doc(db, "coupons", id)); showToast("Coupon removed!"); fetchData(); } catch(err) { showToast("Error!", "error"); }
+  };
 
   const applyCoupon = () => {
     if (!couponInput) { showToast("Please enter a coupon code", 'error'); return; }
     const validCoupon = coupons.find(c => c.code === couponInput.toUpperCase());
-    if (validCoupon) { setAppliedCoupon(validCoupon); showToast(`${validCoupon.discount}% Discount Applied!`); } else { showToast("Invalid or expired coupon!", 'error'); setAppliedCoupon(null); }
+    if (validCoupon) { setAppliedCoupon(validCoupon); showToast(`${validCoupon.discount}% Discount Applied!`); } else { showToast("Invalid coupon!", 'error'); setAppliedCoupon(null); }
   };
-
   const removeCoupon = () => { setAppliedCoupon(null); setCouponInput(''); showToast("Coupon removed"); };
 
   const handleBuyNow = (product) => {
@@ -171,16 +173,17 @@ function App() {
     } catch (error) { showToast('Error approving order', 'error'); }
   };
 
-  const handleDeleteOrder = async (orderId) => { if(window.confirm("Are you sure?")) { try { await deleteDoc(doc(db, "orders", orderId)); showToast("Order deleted!"); fetchOrders(); } catch (error) { showToast('Error deleting order', 'error'); } } };
+  // 🛑 ব্রাউজারের ডিফল্ট উইন্ডো কনফার্ম মুছে দেওয়া হয়েছে
+  const handleDeleteOrder = async (orderId) => { 
+    try { await deleteDoc(doc(db, "orders", orderId)); showToast("Order deleted!"); fetchOrders(); } catch(err) { showToast("Error!", "error"); }
+  };
 
-  // 🛑 অ্যাডভান্সড স্মার্ট ফিল্টারিং লজিক
   const filteredProducts = products.filter(p => {
     const matchSearch = searchTerm === '' || [p.title, p.writer, p.edition, p.target, p.category, p.description].some(val => val && val.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchSubject = advancedFilters.subject === 'All' || p.category === advancedFilters.subject;
     const matchChapter = advancedFilters.chapter === 'All' || p.title === advancedFilters.chapter;
     const matchWriter = advancedFilters.writer === 'All' || p.writer === advancedFilters.writer;
     const matchEdition = advancedFilters.edition === 'All' || p.edition === advancedFilters.edition;
-    
     return matchSearch && matchSubject && matchChapter && matchWriter && matchEdition;
   });
 
@@ -190,12 +193,8 @@ function App() {
       <Navbar activeTab={activeTab} setActiveTab={setActiveTab} user={user} handleLogout={handleLogout} />
       
       <main className="flex-grow max-w-5xl mx-auto p-4 md:p-6 w-full mb-10">
-        
-        {/* 🛑 Home এবং Store-এ advancedFilters পাস করা হলো */}
         {activeTab === 'home' && <Home products={products} setActiveTab={setActiveTab} advancedFilters={advancedFilters} setAdvancedFilters={setAdvancedFilters} />}
-        
         {activeTab === 'store' && <Store searchTerm={searchTerm} setSearchTerm={setSearchTerm} advancedFilters={advancedFilters} setAdvancedFilters={setAdvancedFilters} loading={loading} filteredProducts={filteredProducts} library={library} handleGetFree={handleGetFree} handleBuyNow={handleBuyNow} showToast={showToast} openPdf={openPdf} />}
-        
         {activeTab === 'checkout' && <Checkout checkoutItem={checkoutItem} setActiveTab={setActiveTab} couponInput={couponInput} setCouponInput={setCouponInput} applyCoupon={applyCoupon} appliedCoupon={appliedCoupon} removeCoupon={removeCoupon} storeSettings={storeSettings} handleCheckout={handleCheckout} />}
         {activeTab === 'library' && <Library library={library} openPdf={openPdf} />}
         {activeTab === 'admin' && <Admin isAdmin={isAdmin} user={user} handleLogout={handleLogout} handleLogin={handleLogin} email={email} setEmail={setEmail} password={password} setPassword={setPassword} handleSaveSettings={handleSaveSettings} newBkash={newBkash} setNewBkash={setNewBkash} newNagad={newNagad} setNewNagad={setNewNagad} storeSettings={storeSettings} handleAddCoupon={handleAddCoupon} newCoupon={newCoupon} setNewCoupon={setNewCoupon} coupons={coupons} handleDeleteCoupon={handleDeleteCoupon} handleAddProduct={handleAddProduct} newProduct={newProduct} setNewProduct={setNewProduct} orders={orders} handleApproveOrder={handleApproveOrder} handleDeleteOrder={handleDeleteOrder} products={products} handleDeleteProduct={handleDeleteProduct} />}
