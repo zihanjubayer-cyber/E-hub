@@ -8,38 +8,44 @@ export default function Store({
   handleGetFree, handleBuyNow, openPdf 
 }) {
   
-  // ফিল্টার রিসেট করার ফাংশন
-  const clearFilters = () => {
+  // 🛑 ফিল্টার এবং সার্চ রিসেট করার ফাংশন
+  const handleReset = () => {
     setSearchTerm('');
     setAdvancedFilters({ subject: 'All', chapter: 'All', writer: 'All', edition: 'All' });
   };
 
-  const hasActiveFilters = searchTerm !== '' || advancedFilters.subject !== 'All' || advancedFilters.chapter !== 'All' || advancedFilters.writer !== 'All' || advancedFilters.edition !== 'All';
+  const hasActiveFilters = advancedFilters.subject !== 'All' || advancedFilters.chapter !== 'All' || advancedFilters.writer !== 'All' || advancedFilters.edition !== 'All';
 
   return (
     <div className="animate-fade-in relative">
       
       {/* 🛑 Active Filters Notice */}
       {hasActiveFilters && (
-        <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl mb-6 flex flex-wrap items-center justify-between gap-4 shadow-sm">
+        <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl mb-6 flex flex-wrap items-center justify-between gap-4 shadow-sm animate-fade-in">
           <div className="flex flex-wrap items-center gap-2 text-sm font-bold text-emerald-800">
             <span className="text-gray-500 mr-2">Applied Filters:</span>
             {advancedFilters.subject !== 'All' && <span className="bg-white px-3 py-1 rounded-full border border-emerald-100 shadow-sm">📂 {advancedFilters.subject}</span>}
             {advancedFilters.chapter !== 'All' && <span className="bg-white px-3 py-1 rounded-full border border-emerald-100 shadow-sm">📑 {advancedFilters.chapter}</span>}
             {advancedFilters.writer !== 'All' && <span className="bg-white px-3 py-1 rounded-full border border-emerald-100 shadow-sm">✍️ {advancedFilters.writer}</span>}
             {advancedFilters.edition !== 'All' && <span className="bg-white px-3 py-1 rounded-full border border-emerald-100 shadow-sm">📅 {advancedFilters.edition}</span>}
-            {searchTerm !== '' && <span className="bg-white px-3 py-1 rounded-full border border-emerald-100 shadow-sm">🔍 "{searchTerm}"</span>}
           </div>
-          <button onClick={clearFilters} className="bg-white text-red-500 hover:bg-red-50 hover:text-red-600 px-4 py-2 rounded-xl text-sm font-bold border border-red-100 shadow-sm transition">
-            Clear Filters ✖
+          <button onClick={handleReset} className="bg-white text-red-500 hover:bg-red-50 hover:text-red-600 px-4 py-2 rounded-xl text-sm font-bold border border-red-100 shadow-sm transition">
+            Reset Filters ✖
           </button>
         </div>
       )}
 
-      {/* General Search Bar (Optional fallback in Store) */}
-      <div className="relative mb-8 max-w-2xl mx-auto">
-         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">{Icons.Search}</div>
-         <input type="text" placeholder="Quick search directly here..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-12 pr-4 py-4 rounded-2xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 outline-none shadow-sm transition font-semibold" />
+      {/* 🛑 Search Bar with Permanent Reset Button */}
+      <div className="relative mb-8 max-w-3xl mx-auto flex gap-3">
+         <div className="relative flex-1">
+           <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">{Icons.Search}</div>
+           <input type="text" placeholder="Quick search directly here..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-12 pr-4 py-4 rounded-2xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 outline-none shadow-sm transition font-semibold text-gray-800" />
+         </div>
+         
+         {/* Reset Button */}
+         <button onClick={handleReset} className="bg-white text-gray-600 hover:bg-red-50 hover:text-red-500 hover:border-red-200 border border-gray-200 px-6 py-4 rounded-2xl font-bold transition flex items-center gap-2 shadow-sm whitespace-nowrap active:scale-95">
+           🔄 Reset
+         </button>
       </div>
 
       {loading ? (
@@ -49,7 +55,9 @@ export default function Store({
           <span className="text-6xl mb-4">📭</span>
           <h3 className="text-2xl font-black text-gray-800 mb-2">No Notes Found!</h3>
           <p className="text-gray-500 font-medium mb-6">We couldn't find any notes matching your selected filters.</p>
-          <button onClick={clearFilters} className="bg-emerald-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-emerald-700 transition">See All Notes</button>
+          <button onClick={handleReset} className="bg-emerald-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-emerald-700 transition shadow-md">
+            🔄 Reset & See All Notes
+          </button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
