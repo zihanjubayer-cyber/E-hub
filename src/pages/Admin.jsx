@@ -13,8 +13,6 @@ export default function Admin({
   const [deleteOrderConfirm, setDeleteOrderConfirm] = useState(null);
   const [deleteCouponConfirm, setDeleteCouponConfirm] = useState(null);
   const [deleteProductConfirm, setDeleteProductConfirm] = useState(null);
-
-  // 🛑 ফোল্ডার ওপেন/ক্লোজ করার স্টেট
   const [expandedFolders, setExpandedFolders] = useState({});
 
   const categories = [
@@ -27,16 +25,11 @@ export default function Admin({
   const handleConfirmDeleteOrder = () => { handleDeleteOrder(deleteOrderConfirm); setDeleteOrderConfirm(null); }
   const handleConfirmDeleteCoupon = () => { handleDeleteCoupon(deleteCouponConfirm); setDeleteCouponConfirm(null); }
   const handleConfirmDeleteProduct = () => { handleDeleteProduct(deleteProductConfirm); setDeleteProductConfirm(null); }
-
-  // 🛑 ফোল্ডারে ক্লিক করার ফাংশন
-  const toggleFolder = (category) => {
-    setExpandedFolders(prev => ({ ...prev, [category]: !prev[category] }));
-  };
+  const toggleFolder = (category) => { setExpandedFolders(prev => ({ ...prev, [category]: !prev[category] })); };
 
   const groupedProducts = categories.reduce((acc, cat) => {
     const prods = products.filter(p => p.category === cat);
-    if (prods.length > 0) acc[cat] = prods;
-    return acc;
+    if (prods.length > 0) acc[cat] = prods; return acc;
   }, {});
   const otherProducts = products.filter(p => !categories.includes(p.category));
   if (otherProducts.length > 0) groupedProducts['Others'] = otherProducts;
@@ -44,24 +37,48 @@ export default function Admin({
   return (
     <div className="bg-white p-6 md:p-10 rounded-3xl shadow-lg border border-gray-100 max-w-4xl mx-auto animate-fade-in relative overflow-hidden">
       
-      {/* Verify Order Modal */}
+      {/* 🛑 Detailed Verify Order Modal */}
       {selectedOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 p-4 animate-fade-in">
-          <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-md w-full relative">
-            <h3 className="font-black text-2xl mb-6 text-gray-900 border-b pb-4">Verify Order</h3>
-            <div className="space-y-3 mb-8 text-gray-700">
-              <p><span className="font-bold">Book/Note:</span> <span className="text-emerald-600 font-bold">{selectedOrder.product?.title}</span></p>
-              <p><span className="font-bold">Amount to Pay:</span> ৳{selectedOrder.totalPaid}</p>
-              <p><span className="font-bold">Payment Method:</span> {selectedOrder.paymentMethod || 'bKash/Nagad'}</p>
-              <p><span className="font-bold">User Phone:</span> {selectedOrder.phone}</p>
-              <p className="bg-blue-50 p-3 rounded-lg border border-blue-100 mt-2"><span className="font-bold text-blue-800">TrxID:</span> <span className="font-mono text-blue-900 tracking-wider font-bold">{selectedOrder.trxId}</span></p>
-              <p className="text-xs text-gray-400 mt-2">Time: {new Date(selectedOrder.timestamp).toLocaleString()}</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 p-4 animate-fade-in overflow-y-auto">
+          <div className="bg-white p-6 md:p-8 rounded-3xl shadow-2xl max-w-lg w-full relative my-8">
+            <h3 className="font-black text-2xl mb-6 text-gray-900 border-b pb-4 flex items-center gap-2">🛡️ Verify Order</h3>
+            
+            <div className="space-y-4 mb-8 text-gray-700 text-sm">
+              
+              {/* Product Details Block */}
+              <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100">
+                <p className="text-xs font-bold text-emerald-800 uppercase tracking-widest mb-2">Product Info</p>
+                <p><span className="font-bold text-gray-600">Title:</span> <span className="text-emerald-700 font-bold text-base">{selectedOrder.product?.title}</span></p>
+                <p><span className="font-bold text-gray-600">Category:</span> {selectedOrder.product?.category}</p>
+                {selectedOrder.product?.writer && <p><span className="font-bold text-gray-600">Writer:</span> {selectedOrder.product?.writer}</p>}
+                <p><span className="font-bold text-gray-600">Original Price:</span> ৳{selectedOrder.product?.price}</p>
+              </div>
+
+              {/* Payment Details Block */}
+              <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                <p className="text-xs font-bold text-blue-800 uppercase tracking-widest mb-2">Payment Info</p>
+                <p><span className="font-bold text-gray-600">User Phone:</span> <span className="font-mono font-bold text-base">{selectedOrder.phone}</span></p>
+                <p><span className="font-bold text-gray-600">Method:</span> <span className={`font-bold px-2 py-0.5 rounded text-xs ml-1 ${selectedOrder.paymentMethod === 'Nagad' ? 'bg-orange-200 text-orange-800' : 'bg-pink-200 text-pink-800'}`}>{selectedOrder.paymentMethod || 'bKash/Nagad'}</span></p>
+                <p><span className="font-bold text-gray-600">Amount Paid:</span> <span className="font-black text-lg text-blue-700">৳{selectedOrder.totalPaid}</span></p>
+                <div className="mt-2 pt-2 border-t border-blue-200">
+                  <p><span className="font-bold text-blue-900">TrxID:</span> <span className="font-mono font-black text-lg tracking-wider text-gray-900 bg-white px-2 py-1 rounded border shadow-sm select-all">{selectedOrder.trxId}</span></p>
+                </div>
+              </div>
+
+              {/* System Details Block */}
+              <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">System Info</p>
+                <p><span className="font-bold text-gray-500">Order ID:</span> <span className="font-mono text-xs">{selectedOrder.id}</span></p>
+                <p><span className="font-bold text-gray-500">Time:</span> <span className="text-xs font-medium">{new Date(selectedOrder.timestamp).toLocaleString()}</span></p>
+              </div>
+
             </div>
+
             <div className="flex gap-3">
-              <button onClick={() => { handleApproveOrder(selectedOrder.id, selectedOrder.product, selectedOrder.userId); setSelectedOrder(null); }} className="flex-1 bg-emerald-600 text-white py-3 rounded-xl font-bold hover:bg-emerald-700 transition">Confirm Approve</button>
-              <button onClick={() => { setDeleteOrderConfirm(selectedOrder.id); setSelectedOrder(null); }} className="flex-1 bg-red-100 text-red-600 py-3 rounded-xl font-bold hover:bg-red-200 transition">Reject & Delete</button>
+              <button onClick={() => { handleApproveOrder(selectedOrder.id, selectedOrder.product, selectedOrder.userId); setSelectedOrder(null); }} className="flex-1 bg-emerald-600 text-white py-3 md:py-4 rounded-xl font-black text-lg hover:bg-emerald-700 shadow-md transition">✅ Confirm Approve</button>
+              <button onClick={() => { setDeleteOrderConfirm(selectedOrder.id); setSelectedOrder(null); }} className="flex-1 bg-red-50 text-red-600 border border-red-200 py-3 md:py-4 rounded-xl font-bold hover:bg-red-100 transition">✖ Reject & Delete</button>
             </div>
-            <button onClick={() => setSelectedOrder(null)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-800 font-bold text-xl">&times;</button>
+            <button onClick={() => setSelectedOrder(null)} className="absolute top-6 right-6 text-gray-400 hover:text-gray-800 font-black text-2xl transition">&times;</button>
           </div>
         </div>
       )}
@@ -259,33 +276,22 @@ export default function Admin({
             )}
           </div>
 
-          {/* 🛑 Clickable Folders for Uploaded Notes */}
           <div>
              <h3 className="font-extrabold text-2xl mb-6 text-gray-900">📚 Uploaded Notes</h3>
-             
              {Object.keys(groupedProducts).length === 0 ? (
                <p className="text-gray-500">No notes uploaded yet.</p>
              ) : (
                Object.keys(groupedProducts).map(category => (
                  <div key={category} className="mb-4 bg-gray-50 rounded-3xl border border-gray-200 overflow-hidden shadow-sm">
-                   
-                   {/* Folder Header (Click to Toggle) */}
-                   <button 
-                     onClick={() => toggleFolder(category)}
-                     className="w-full flex justify-between items-center p-5 md:p-6 bg-white hover:bg-emerald-50 transition"
-                   >
+                   <button onClick={() => toggleFolder(category)} className="w-full flex justify-between items-center p-5 md:p-6 bg-white hover:bg-emerald-50 transition">
                      <h4 className="font-black text-xl text-emerald-800 flex items-center gap-3">
                        {expandedFolders[category] ? '📂' : '📁'} {category} 
                        <span className="bg-emerald-100 text-emerald-700 text-sm px-3 py-1 rounded-full border border-emerald-200">
                          {groupedProducts[category].length} Notes
                        </span>
                      </h4>
-                     <span className={`text-emerald-500 font-bold transform transition-transform duration-300 ${expandedFolders[category] ? 'rotate-180' : ''}`}>
-                       ▼
-                     </span>
+                     <span className={`text-emerald-500 font-bold transform transition-transform duration-300 ${expandedFolders[category] ? 'rotate-180' : ''}`}>▼</span>
                    </button>
-                   
-                   {/* Folder Content (Notes Grid) */}
                    {expandedFolders[category] && (
                      <div className="p-5 md:p-6 grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-gray-100 bg-gray-50">
                        {groupedProducts[category].map(p => (
@@ -302,7 +308,6 @@ export default function Admin({
                        ))}
                      </div>
                    )}
-                   
                  </div>
                ))
              )}
